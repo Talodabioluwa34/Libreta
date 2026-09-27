@@ -24,57 +24,22 @@ import {
 import { Badge } from '@/src/components/ui/Badge';
 import { useRouter } from 'expo-router';
 
+import { useTransactions } from '@/src/context/TransactionContext';
+import { RecordSaleModal } from '@/src/components/modals/RecordSaleModal';
+import { AddDebtModal } from '@/src/components/modals/AddDebtModal';
+import { RecordPaymentModal } from '@/src/components/modals/RecordPaymentModal';
+import { RecordExpenseModal } from '@/src/components/modals/RecordExpenseModal';
+
 export default function HomeScreen() {
   const router = useRouter();
   const { business } = useAuth();
+  const { summary, totalDebtOwed, sales, expenses } = useTransactions();
   const [refreshing, setRefreshing] = useState(false);
 
-  // Initial demonstration summary data (aligned with PRD §8.10)
-  const [summary] = useState({
-    sales: 85000,
-    collected: 70000,
-    new_credit: 15000,
-    expenses: 12000,
-    net_movement: 58000, // 70,000 - 12,000
-    customers_owing_count: 4,
-    total_debt_owed: 37500,
-  });
-
-  const [recentTransactions] = useState([
-    {
-      id: 'tx-1',
-      title: 'Mama Bisi',
-      item: '2 Bags of Rice (50kg)',
-      amount: 45000,
-      paid: 30000,
-      outstanding: 15000,
-      status: 'part_paid' as const,
-      time: '12:40 PM',
-      type: 'sale',
-    },
-    {
-      id: 'tx-2',
-      title: 'Walk-in Cash Customer',
-      item: 'Cooking Oil (5L)',
-      amount: 14000,
-      paid: 14000,
-      outstanding: 0,
-      status: 'paid' as const,
-      time: '11:15 AM',
-      type: 'sale',
-    },
-    {
-      id: 'tx-3',
-      title: 'Generator Fuel & Transport',
-      item: 'Running cost (10L Petrol)',
-      amount: 8500,
-      paid: 8500,
-      outstanding: 0,
-      spend_type: 'running_cost' as const,
-      time: '09:30 AM',
-      type: 'expense',
-    },
-  ]);
+  const [saleModalVisible, setSaleModalVisible] = useState(false);
+  const [debtModalVisible, setDebtModalVisible] = useState(false);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [expenseModalVisible, setExpenseModalVisible] = useState(false);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -113,7 +78,7 @@ export default function HomeScreen() {
               </View>
               <View>
                 <Text style={styles.debtCardLabel}>Total People Owe You</Text>
-                <Text style={styles.debtAmount}>{formatNaira(summary.total_debt_owed)}</Text>
+                <Text style={styles.debtAmount}>{formatNaira(totalDebtOwed)}</Text>
               </View>
             </View>
             <View style={styles.debtFooterRow}>
@@ -198,7 +163,13 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={[styles.actionCard, { backgroundColor: COLORS.primary }]}
               activeOpacity={0.8}
-              onPress={() => router.push('/(tabs)/sales')}
+              onPress={() => {
+                if (isDebtOnly) {
+                  setDebtModalVisible(true);
+                } else {
+                  setSaleModalVisible(true);
+                }
+              }}
             >
               <PlusCircle size={28} color={COLORS.textInverse} />
               <Text style={styles.actionCardTitle}>
@@ -213,7 +184,7 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={[styles.actionCard, { backgroundColor: COLORS.surface }]}
               activeOpacity={0.8}
-              onPress={() => router.push('/(tabs)/owes')}
+              onPress={() => setPaymentModalVisible(true)}
             >
               <CreditCard size={28} color={COLORS.brandAccent} />
               <Text style={[styles.actionCardTitle, { color: COLORS.textPrimary }]}>
@@ -226,7 +197,7 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={[styles.actionCard, { backgroundColor: COLORS.surface }]}
               activeOpacity={0.8}
-              onPress={() => router.push('/(tabs)/more')}
+              onPress={() => setExpenseModalVisible(true)}
             >
               <Receipt size={28} color={COLORS.statusPartPaid} />
               <Text style={[styles.actionCardTitle, { color: COLORS.textPrimary }]}>
@@ -252,7 +223,7 @@ export default function HomeScreen() {
               <Text style={styles.owesBannerSubtitle}>Tap to check balances & send reminders</Text>
             </View>
           </View>
-          <Text style={styles.owesBannerAmount}>{formatNaira(summary.total_debt_owed)}</Text>
+          <Text style={styles.owesBannerAmount}>{formatNaira(totalDebtOwed)}</Text>
         </TouchableOpacity>
 
         {/* Recent Transactions List */}
@@ -264,26 +235,40 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          {recentTransactions.map((tx) => (
-            <View key={tx.id} style={styles.txRow}>
+          {sales.slice(0, 5).map((s) => (
+            <View key={s.id} style={styles.txRow}>
               <View style={styles.txLeft}>
-                <Text style={styles.txTitle}>{tx.title}</Text>
-                <Text style={styles.txItem}>{tx.item}</Text>
-                <Text style={styles.txTime}>{tx.time}</Text>
+                <Text style={styles.txTitle}>{s.customer_name || 'Walk-in Cash Customer'}</Text>
+                <Text style={styles.txItem}>{s.note || 'Sale'}</Text>
+                <Text style={styles.txTime}>Today</Text>
               </View>
 
               <View style={styles.txRight}>
-                <Text style={styles.txAmount}>{formatNaira(tx.amount)}</Text>
-                {tx.type === 'sale' ? (
-                  <Badge status={tx.status} />
-                ) : (
-                  <Badge spendType={tx.spend_type} />
-                )}
+                <Text style={styles.txAmount}>{formatNaira(s.total_amount)}</Text>
+                <Badge status={s.status} />
               </View>
             </View>
           ))}
         </View>
       </ScrollView>
+
+      {/* Interactive Modals */}
+      <RecordSaleModal
+        visible={saleModalVisible}
+        onClose={() => setSaleModalVisible(false)}
+      />
+      <AddDebtModal
+        visible={debtModalVisible}
+        onClose={() => setDebtModalVisible(false)}
+      />
+      <RecordPaymentModal
+        visible={paymentModalVisible}
+        onClose={() => setPaymentModalVisible(false)}
+      />
+      <RecordExpenseModal
+        visible={expenseModalVisible}
+        onClose={() => setExpenseModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }

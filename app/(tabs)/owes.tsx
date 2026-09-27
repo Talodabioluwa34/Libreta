@@ -11,49 +11,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, formatNaira, TOUCH_TARGET, TYPOGRAPHY } from '@/src/constants/theme';
 import { Search, AlertCircle, Phone, ArrowRight, CheckCircle2 } from 'lucide-react-native';
 
+import { useTransactions } from '@/src/context/TransactionContext';
+import { RecordPaymentModal } from '@/src/components/modals/RecordPaymentModal';
+import { Customer } from '@/src/types';
+
 export default function OwesScreen() {
+  const { customers, totalDebtOwed } = useTransactions();
   const [searchQuery, setSearchQuery] = useState('');
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [selectedDebtor, setSelectedDebtor] = useState<Customer | null>(null);
 
-  const [debtors] = useState([
-    {
-      id: 'cust-1',
-      name: 'Mama Bisi',
-      phone: '0802 345 6789',
-      outstanding: 15000,
-      total_purchases: 65000,
-      last_activity: 'Today (Sale: ₦45,000, Paid: ₦30,000)',
-    },
-    {
-      id: 'cust-2',
-      name: 'Ibrahim Carpenter',
-      phone: '0813 987 6543',
-      outstanding: 6500,
-      total_purchases: 18500,
-      last_activity: 'Today (Unpaid Nails pack)',
-    },
-    {
-      id: 'cust-3',
-      name: 'Uncle Jude',
-      phone: '0905 111 2233',
-      outstanding: 12000,
-      total_purchases: 42000,
-      last_activity: '3 days ago',
-    },
-    {
-      id: 'cust-4',
-      name: 'Iya Moria Food Canteen',
-      phone: '0807 555 4433',
-      outstanding: 4000,
-      total_purchases: 95000,
-      last_activity: 'Yesterday (Paid ₦10,000)',
-    },
-  ]);
-
-  const totalOutstanding = debtors.reduce((acc, curr) => acc + curr.outstanding, 0);
+  const debtors = customers.filter((c) => (c.outstanding_balance || 0) > 0);
 
   const filteredDebtors = debtors.filter((d) =>
     d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    d.phone.includes(searchQuery)
+    (d.phone && d.phone.includes(searchQuery))
   );
 
   return (
@@ -67,7 +39,7 @@ export default function OwesScreen() {
       <View style={styles.totalBanner}>
         <View style={styles.totalBannerLeft}>
           <Text style={styles.totalBannerLabel}>Total Outstanding Debt</Text>
-          <Text style={styles.totalBannerAmount}>{formatNaira(totalOutstanding)}</Text>
+          <Text style={styles.totalBannerAmount}>{formatNaira(totalDebtOwed)}</Text>
           <Text style={styles.totalBannerSub}>{debtors.length} customers owe you money</Text>
         </View>
         <View style={styles.alertIconCircle}>
@@ -105,30 +77,40 @@ export default function OwesScreen() {
 
               <View style={styles.balanceBadge}>
                 <Text style={styles.balanceLabel}>Owes</Text>
-                <Text style={styles.balanceAmount}>{formatNaira(item.outstanding)}</Text>
+                <Text style={styles.balanceAmount}>{formatNaira(item.outstanding_balance || 0)}</Text>
               </View>
             </View>
 
             <View style={styles.activityBox}>
-              <Text style={styles.activityText}>Latest: {item.last_activity}</Text>
+              <Text style={styles.activityText}>Notes: {item.notes || 'Active debt account'}</Text>
             </View>
 
             <View style={styles.actionsRow}>
               <TouchableOpacity
                 style={styles.recordPaymentBtn}
                 activeOpacity={0.8}
+                onPress={() => {
+                  setSelectedDebtor(item);
+                  setPaymentModalVisible(true);
+                }}
               >
                 <CheckCircle2 size={16} color={COLORS.textInverse} />
                 <Text style={styles.recordPaymentText}>Record Payment</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.historyBtn} activeOpacity={0.7}>
-                <Text style={styles.historyBtnText}>History</Text>
+                <Text style={styles.historyBtnText}>Details</Text>
                 <ArrowRight size={14} color={COLORS.textPrimary} />
               </TouchableOpacity>
             </View>
           </View>
         )}
+      />
+
+      <RecordPaymentModal
+        visible={paymentModalVisible}
+        onClose={() => setPaymentModalVisible(false)}
+        preselectedCustomer={selectedDebtor}
       />
     </SafeAreaView>
   );

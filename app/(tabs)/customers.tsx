@@ -11,56 +11,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, formatNaira, TOUCH_TARGET, TYPOGRAPHY } from '@/src/constants/theme';
 import { UserPlus, Search, Phone, ChevronRight } from 'lucide-react-native';
 
-export default function CustomersScreen() {
-  const [searchQuery, setSearchQuery] = useState('');
+import { useTransactions } from '@/src/context/TransactionContext';
 
-  const [customers] = useState([
-    {
-      id: 'cust-1',
-      name: 'Mama Bisi',
-      phone: '0802 345 6789',
-      notes: 'Provision wholesaler customer. Pays every Friday.',
-      total_purchases: 185000,
-      outstanding: 15000,
-    },
-    {
-      id: 'cust-2',
-      name: 'Ibrahim Carpenter',
-      phone: '0813 987 6543',
-      notes: 'Hardware & nails buyer in the market.',
-      total_purchases: 45000,
-      outstanding: 6500,
-    },
-    {
-      id: 'cust-3',
-      name: 'Sister Grace',
-      phone: '0803 777 8899',
-      notes: 'Fashion materials regular buyer.',
-      total_purchases: 92000,
-      outstanding: 0,
-    },
-    {
-      id: 'cust-4',
-      name: 'Uncle Jude',
-      phone: '0905 111 2233',
-      notes: 'Neighbor at shop 14.',
-      total_purchases: 54000,
-      outstanding: 12000,
-    },
-    {
-      id: 'cust-5',
-      name: 'Iya Moria Food Canteen',
-      phone: '0807 555 4433',
-      notes: 'Buys cooking oil, rice, and seasonings weekly.',
-      total_purchases: 320000,
-      outstanding: 4000,
-    },
-  ]);
+export default function CustomersScreen() {
+  const { customers } = useTransactions();
+  const [searchQuery, setSearchQuery] = useState('');
 
   const filteredCustomers = customers.filter(
     (c) =>
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.phone.includes(searchQuery)
+      (c.phone && c.phone.includes(searchQuery))
   );
 
   return (
@@ -120,10 +80,10 @@ export default function CustomersScreen() {
             </View>
 
             <View style={styles.rightCol}>
-              {item.outstanding > 0 ? (
+              {(item.outstanding_balance || 0) > 0 ? (
                 <View style={styles.owingTag}>
                   <Text style={styles.owingTagText}>
-                    Owes {formatNaira(item.outstanding)}
+                    Owes {formatNaira(item.outstanding_balance || 0)}
                   </Text>
                 </View>
               ) : (
@@ -132,7 +92,7 @@ export default function CustomersScreen() {
                 </View>
               )}
               <Text style={styles.totalPurchases}>
-                Bought {formatNaira(item.total_purchases)}
+                Bought {formatNaira(item.total_purchases || 0)}
               </Text>
             </View>
           </TouchableOpacity>

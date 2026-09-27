@@ -12,60 +12,24 @@ import { COLORS, formatNaira, TOUCH_TARGET, TYPOGRAPHY } from '@/src/constants/t
 import { Badge } from '@/src/components/ui/Badge';
 import { Plus, Search, Calendar, Filter } from 'lucide-react-native';
 
+import { useTransactions } from '@/src/context/TransactionContext';
+import { RecordSaleModal } from '@/src/components/modals/RecordSaleModal';
+
 const FILTER_TABS = ['Today', 'Yesterday', 'This Week', 'This Month', 'All'];
 
 export default function SalesScreen() {
+  const { sales } = useTransactions();
   const [activeFilter, setActiveFilter] = useState('Today');
   const [searchQuery, setSearchQuery] = useState('');
-
-  const [sales] = useState([
-    {
-      id: 'sale-1',
-      customer: 'Mama Bisi',
-      items: '2 Bags of Rice (50kg)',
-      total: 45000,
-      paid: 30000,
-      outstanding: 15000,
-      status: 'part_paid' as const,
-      date: 'Today, 12:40 PM',
-    },
-    {
-      id: 'sale-2',
-      customer: 'Walk-in Cash Customer',
-      items: 'Cooking Oil (5L) + 2 Salt',
-      total: 14000,
-      paid: 14000,
-      outstanding: 0,
-      status: 'paid' as const,
-      date: 'Today, 11:15 AM',
-    },
-    {
-      id: 'sale-3',
-      customer: 'Ibrahim Carpenter',
-      items: 'Pack of Nails & Screws',
-      total: 6500,
-      paid: 0,
-      outstanding: 6500,
-      status: 'unpaid' as const,
-      date: 'Today, 09:20 AM',
-    },
-    {
-      id: 'sale-4',
-      customer: 'Sister Grace',
-      items: 'Fashion Fabric (Lace material)',
-      total: 22000,
-      paid: 22000,
-      outstanding: 0,
-      status: 'paid' as const,
-      date: 'Yesterday, 04:10 PM',
-    },
-  ]);
+  const [saleModalVisible, setSaleModalVisible] = useState(false);
 
   const filteredSales = sales.filter((s) => {
+    const custName = s.customer_name || 'Walk-in Cash Customer';
+    const noteText = s.note || '';
     if (!searchQuery) return true;
     return (
-      s.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.items.toLowerCase().includes(searchQuery.toLowerCase())
+      custName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      noteText.toLowerCase().includes(searchQuery.toLowerCase())
     );
   });
 
@@ -122,45 +86,57 @@ export default function SalesScreen() {
         data={filteredSales}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.saleCard} activeOpacity={0.7}>
-            <View style={styles.cardTop}>
-              <View style={styles.cardCustomerInfo}>
-                <Text style={styles.customerName}>{item.customer}</Text>
-                <Text style={styles.saleItems}>{item.items}</Text>
+        renderItem={({ item }) => {
+          const unpaid = item.total_amount - item.amount_paid;
+          return (
+            <TouchableOpacity style={styles.saleCard} activeOpacity={0.7}>
+              <View style={styles.cardTop}>
+                <View style={styles.cardCustomerInfo}>
+                  <Text style={styles.customerName}>{item.customer_name || 'Walk-in Cash Customer'}</Text>
+                  <Text style={styles.saleItems}>{item.note || 'General Sale'}</Text>
+                </View>
+                <Badge status={item.status} />
               </View>
-              <Badge status={item.status} />
-            </View>
 
-            <View style={styles.cardDivider} />
+              <View style={styles.cardDivider} />
 
-            <View style={styles.cardBottom}>
-              <View>
-                <Text style={styles.dateText}>{item.date}</Text>
-                {item.outstanding > 0 ? (
-                  <Text style={styles.outstandingAlert}>
-                    Owes: {formatNaira(item.outstanding)}
+              <View style={styles.cardBottom}>
+                <View>
+                  <Text style={styles.dateText}>Today</Text>
+                  {unpaid > 0 ? (
+                    <Text style={styles.outstandingAlert}>
+                      Owes: {formatNaira(unpaid)}
+                    </Text>
+                  ) : (
+                    <Text style={styles.paidFullText}>Settled in full</Text>
+                  )}
+                </View>
+                <View style={styles.amountBox}>
+                  <Text style={styles.totalAmount}>{formatNaira(item.total_amount)}</Text>
+                  <Text style={styles.paidSubtitle}>
+                    Paid: {formatNaira(item.amount_paid)}
                   </Text>
-                ) : (
-                  <Text style={styles.paidFullText}>Settled in full</Text>
-                )}
+                </View>
               </View>
-              <View style={styles.amountBox}>
-                <Text style={styles.totalAmount}>{formatNaira(item.total)}</Text>
-                <Text style={styles.paidSubtitle}>
-                  Paid: {formatNaira(item.paid)}
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        )}
+            </TouchableOpacity>
+          );
+        }}
       />
 
       {/* Floating Action Button */}
-      <TouchableOpacity style={styles.fab} activeOpacity={0.85}>
+      <TouchableOpacity
+        style={styles.fab}
+        activeOpacity={0.85}
+        onPress={() => setSaleModalVisible(true)}
+      >
         <Plus size={24} color={COLORS.textInverse} />
         <Text style={styles.fabText}>Record Sale</Text>
       </TouchableOpacity>
+
+      <RecordSaleModal
+        visible={saleModalVisible}
+        onClose={() => setSaleModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }

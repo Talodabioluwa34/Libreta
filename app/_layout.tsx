@@ -54,11 +54,15 @@ function RootNavigation() {
   );
 }
 
+import { TransactionProvider } from '@/src/context/TransactionContext';
+
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <RootNavigation />
+        <TransactionProvider>
+          <RootNavigation />
+        </TransactionProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

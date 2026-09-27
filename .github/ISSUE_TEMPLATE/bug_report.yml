@@ -1,0 +1,66 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior in the Libreta mobile app
+labels: ['bug', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping make Libreta more reliable for vendors!
+  - type: input
+    id: version
+    attributes:
+      label: App Version / Build Number
+      description: What version or commit hash are you testing?
+      placeholder: e.g., v0.1.0-alpha (commit a1b2c3d)
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Operating System / Platform
+      options:
+        - Android Physical Device
+        - Android Emulator
+        - iOS Physical Device
+        - iOS Simulator
+        - Expo Go
+    validations:
+      required: true
+  - type: dropdown
+    id: network_state
+    attributes:
+      label: Network State When Bug Occurred
+      options:
+        - Offline (Airplane Mode / No Data)
+        - Spotty / Slow Connection (2G/3G)
+        - Stable Wi-Fi / 4G / 5G
+        - Transitioning from Offline to Online
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction_steps
+    attributes:
+      label: Steps to Reproduce
+      description: Step-by-step description of how to trigger the bug.
+      placeholder: |
+        1. Open Libreta Home
+        2. Tap "Record Sale"
+        3. Enter Item "Rice" with amount 5000
+        4. Turn on Airplane mode
+        5. Tap "Save"
+    validations:
+      required: true
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen according to the PRD?
+    validations:
+      required: true
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: Actual Behavior
+      description: What actually occurred? Include error messages or logs if available.
+    validations:
+      required: true

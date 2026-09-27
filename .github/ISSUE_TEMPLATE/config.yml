@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Libreta PRD Documentation
+    url: https://github.com/Talodabioluwa34/Libreta/blob/main/docs/PRD.md
+    about: Review the complete Product Requirements Document (PRD v2).
+  - name: 🏗️ Technical Architecture
+    url: https://github.com/Talodabioluwa34/Libreta/blob/main/docs/ARCHITECTURE.md
+    about: Read about the offline-first SQLite sync engine & Supabase security.

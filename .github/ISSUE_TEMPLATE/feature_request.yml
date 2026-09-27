@@ -1,0 +1,34 @@
+name: 💡 Feature or JTBD Proposal
+description: Propose a new feature, workflow improvement, or JTBD extension for Libreta
+labels: ['enhancement', 'prd']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before proposing a feature, remember the Libreta Core Principle:
+        **"Simple before comprehensive"** — every feature must justify its cognitive complexity for a busy market trader.
+  - type: textarea
+    id: problem_statement
+    attributes:
+      label: Vendor Problem Statement
+      description: What real obstacle or workflow pain does the trader experience?
+      placeholder: e.g., "A vendor selling bread wants to track total crate debts at the end of the day..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed Solution & Flow
+      description: How should the interaction look and feel? Keep it minimal.
+    validations:
+      required: true
+  - type: dropdown
+    id: priority_tier
+    attributes:
+      label: PRD Priority Classification
+      options:
+        - P0 (Essential for MVP / 5-Vendor Validation)
+        - P1 (Planned post-validation, e.g. Receipts, WhatsApp reminders)
+        - P2 (Future consideration)
+    validations:
+      required: true

@@ -1,0 +1,58 @@
+name: EAS Preview Build Trigger
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Build Platform'
+        required: true
+        default: 'android'
+        type: choice
+        options:
+          - android
+          - ios
+          - all
+      profile:
+        description: 'EAS Build Profile'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - development
+          - preview
+          - production
+
+jobs:
+  build:
+    name: EAS Build (${{ inputs.platform }} / ${{ inputs.profile }})
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: |
+          if [ -f package.json ]; then
+            npm ci --prefer-offline || npm install
+          fi
+
+      - name: Trigger Build on EAS
+        run: |
+          if [ "${{ secrets.EXPO_TOKEN }}" != "" ]; then
+            eas build --platform ${{ inputs.platform }} --profile ${{ inputs.profile }} --non-interactive
+          else
+            echo "EXPO_TOKEN secret not configured yet. Configure this in GitHub repo secrets."
+          fi

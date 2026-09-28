@@ -1,8 +1,19 @@
 export const COLORS = {
-  // Brand & Backgrounds
-  primary: '#0F172A', // Slate 900 (High contrast, professional)
-  primaryLight: '#1E293B',
-  brandAccent: '#10B981', // Vibrant Emerald (Finnancial growth)
+  // Brand (Deep Pine Forest Green)
+  primary: '#00513F', // Brand Core (Rich, authoritative Nigerian forest green)
+  primaryLight: '#0A6B54',
+  primaryDark: '#003B2E',
+  primaryDeep: '#00241C',
+  primarySurface: '#E6F0EC', // Subtle green tint for light containers
+
+  // Accent (Electric Volt / Citron Lime)
+  accent: '#E8FF26', // High-energy neon volt accent
+  accentHover: '#D3EB17',
+  accentSurface: '#F7FDCE', // Soft pastel lime tint for chips/light badges
+  accentText: '#00382B', // Dark contrast text required on top of #E8FF26
+  brandAccent: '#00513F', // Backwards-compatible alias for primary brand accent
+
+  // Neutral & Canvas
   background: '#F8FAFC', // Slate 50 (Crisp, clean canvas)
   surface: '#FFFFFF',
   surfaceSubtle: '#F1F5F9',
@@ -29,8 +40,9 @@ export const COLORS = {
   debtBadge: '#B91C1C',
 
   // Interactive
-  buttonDisabled: '#94A3B8',
-  inputFocus: '#2563EB',
+  buttonDisabled: '#CBD5E1',
+  buttonDisabledText: '#94A3B8',
+  inputFocus: '#00513F',
 };
 
 export const SPACING = {

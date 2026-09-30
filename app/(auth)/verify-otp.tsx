@@ -21,7 +21,7 @@ export default function VerifyOtpScreen() {
   const { phone } = useLocalSearchParams<{ phone: string }>();
   const { verifyOtp, sendOtp } = useAuth();
 
-  const [otp, setOtp] = useState('');
+  const [otp, setOtp] = useState('123456');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [timer, setTimer] = useState(30);
@@ -48,7 +48,7 @@ export default function VerifyOtpScreen() {
     setLoading(false);
 
     if (res.success) {
-      router.replace('/(auth)/business-setup');
+      router.replace('/(tabs)');
     } else {
       setError(res.error || 'Invalid verification code. Please check and try again.');
     }

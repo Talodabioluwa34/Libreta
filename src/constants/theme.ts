@@ -16,9 +16,11 @@ export const COLORS = {
   // Neutral & Canvas
   background: '#F8FAFC', // Slate 50 (Crisp, clean canvas)
   surface: '#FFFFFF',
-  surfaceSubtle: '#F1F5F9',
-  border: '#E2E8F0',
-  borderDark: '#CBD5E1',
+  surfaceSubtle: '#F1F5F9', // Slate 100
+  border: '#E2E8F0', // Slate 200
+  borderDark: '#CBD5E1', // Slate 300
+  overlay: 'rgba(15, 23, 42, 0.65)',
+  shadow: '#0F172A',
 
   // Typography
   textPrimary: '#0F172A',
@@ -37,7 +39,35 @@ export const COLORS = {
   // Money Movement
   cashIn: '#059669',
   cashOut: '#DC2626',
+
+  // Urgent Debt / Owes Alert Scale
+  debtSurface: '#FEF2F2',
+  debtBorder: '#FCA5A5',
+  debtText: '#991B1B',
   debtBadge: '#B91C1C',
+
+  // PRD §8.9: Expense Categories
+  stockSpend: '#4F46E5', // Indigo (Inventory asset restock)
+  stockSpendBg: '#EEF2FF',
+  runningCost: '#D97706', // Amber (Sunk running overhead / fuel / rent)
+  runningCostBg: '#FFFBEB',
+
+  // Nigerian Payment Channels
+  paymentCash: '#059669',
+  paymentTransfer: '#2563EB', // Bank Blue
+  paymentTransferBg: '#EFF6FF',
+  paymentPOS: '#7C3AED', // POS Purple
+  paymentPOSBg: '#F5F3FF',
+
+  // External & Messaging
+  whatsapp: '#25D366', // WhatsApp official green
+  whatsappBg: '#DCF8C6',
+  whatsappDark: '#128C7E',
+
+  // Offline / Cloud Sync Status (The Trust Pillar)
+  syncOnline: '#059669',
+  syncPending: '#D97706',
+  syncOffline: '#64748B',
 
   // Interactive
   buttonDisabled: '#CBD5E1',

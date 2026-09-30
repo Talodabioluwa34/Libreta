@@ -31,12 +31,24 @@ export default function BusinessSetupScreen() {
   const router = useRouter();
   const { setupBusiness } = useAuth();
 
-  const [ownerName, setOwnerName] = useState('');
-  const [businessName, setBusinessName] = useState('');
+  const [ownerName, setOwnerName] = useState('Mama Chinedu');
+  const [businessName, setBusinessName] = useState('Mama Chinedu Provisions');
   const [businessType, setBusinessType] = useState(BUSINESS_TYPES[0]);
   const [mode, setMode] = useState<BusinessMode>('full');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const handleSkip = async () => {
+    setLoading(true);
+    await setupBusiness({
+      ownerName: ownerName.trim() || 'Mama Chinedu',
+      businessName: businessName.trim() || 'Mama Chinedu Provisions',
+      businessType: businessType || BUSINESS_TYPES[0],
+      mode,
+    });
+    setLoading(false);
+    router.replace('/(tabs)');
+  };
 
   const handleSubmit = async () => {
     if (!ownerName.trim()) {
@@ -82,6 +94,9 @@ export default function BusinessSetupScreen() {
             <Text style={styles.subtitle}>
               Takes less than 30 seconds. You can always change these settings later.
             </Text>
+            <TouchableOpacity onPress={handleSkip} style={styles.skipBtn} activeOpacity={0.7}>
+              <Text style={styles.skipBtnText}>Skip and go straight to Home Screen →</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.card}>
@@ -395,5 +410,21 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     marginTop: 6,
+  },
+  skipBtn: {
+    marginTop: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: COLORS.surfaceSubtle,
+    borderRadius: 8,
+    alignSelf: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  skipBtnText: {
+    ...TYPOGRAPHY.caption,
+    fontWeight: '700',
+    color: COLORS.primary,
+    fontSize: 12,
   },
 });

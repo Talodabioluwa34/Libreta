@@ -24,6 +24,7 @@ interface AuthContextType {
     mode: BusinessMode;
   }) => Promise<{ success: boolean; error?: string }>;
   updateBusinessMode: (mode: BusinessMode) => Promise<void>;
+  quickDemoLogin: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -148,18 +149,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const profile: UserProfile = {
           id: 'local-trader-' + phone.slice(-4),
-          name: 'Trader',
+          name: 'Mama Chinedu',
           phone,
           created_at: new Date().toISOString(),
         };
 
+        const defaultBiz: Business = {
+          id: 'biz-default',
+          owner_id: profile.id,
+          name: 'Mama Chinedu Provisions',
+          business_type: 'Provision / Mini-Mart',
+          currency: 'NGN',
+          mode: 'full',
+          created_at: new Date().toISOString(),
+        };
+
         setUser(profile);
+        setBusiness(defaultBiz);
         await saveLocalData(STORAGE_KEYS.USER_PROFILE, profile);
+        await saveLocalData(STORAGE_KEYS.BUSINESS, defaultBiz);
         return { success: true };
       }
     } catch (err: any) {
       return { success: false, error: err.message || 'OTP verification failed' };
     }
+  };
+
+  const quickDemoLogin = async () => {
+    const demoUser: UserProfile = {
+      id: 'demo-trader-001',
+      name: 'Mama Chinedu',
+      phone: '+2348012345678',
+      created_at: new Date().toISOString(),
+    };
+    const demoBusiness: Business = {
+      id: 'biz-default',
+      owner_id: demoUser.id,
+      name: 'Mama Chinedu Provisions',
+      business_type: 'Provision / Mini-Mart',
+      currency: 'NGN',
+      mode: 'full',
+      created_at: new Date().toISOString(),
+    };
+
+    setUser(demoUser);
+    setBusiness(demoBusiness);
+    await saveLocalData(STORAGE_KEYS.USER_PROFILE, demoUser);
+    await saveLocalData(STORAGE_KEYS.BUSINESS, demoBusiness);
   };
 
   const setupBusiness = async (data: {
@@ -250,6 +286,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         verifyOtp,
         setupBusiness,
         updateBusinessMode,
+        quickDemoLogin,
         logout,
       }}
     >

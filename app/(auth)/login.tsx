@@ -18,10 +18,17 @@ import { BookOpen, ShieldCheck } from 'lucide-react-native';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { sendOtp } = useAuth();
+  const { sendOtp, quickDemoLogin } = useAuth();
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const handleInstantDemo = async () => {
+    setLoading(true);
+    await quickDemoLogin();
+    setLoading(false);
+    router.replace('/(tabs)');
+  };
 
   const handleSendOtp = async (inputPhone?: string) => {
     const rawNumber = inputPhone || phone;
@@ -54,9 +61,9 @@ export default function LoginScreen() {
     }
   };
 
-  const handleQuickDemo = (samplePhone: string) => {
+  const handleQuickDemo = async (samplePhone: string) => {
     setPhone(samplePhone);
-    handleSendOtp(samplePhone);
+    await handleInstantDemo();
   };
 
   return (
@@ -104,24 +111,29 @@ export default function LoginScreen() {
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
             <Button
-              title="Continue"
+              title="Continue with Phone"
               onPress={() => handleSendOtp()}
               loading={loading}
               style={styles.submitBtn}
             />
 
-            {/* Quick Pilot Tester Shortcuts */}
-            <View style={styles.pilotSection}>
-              <Text style={styles.pilotTitle}>⚡ 5-Vendor Pilot Test Mode:</Text>
-              <View style={styles.chipRow}>
-                <TouchableOpacity
-                  style={styles.pilotChip}
-                  onPress={() => handleQuickDemo('08012345678')}
-                >
-                  <Text style={styles.pilotChipText}>Trader Demo (0801...)</Text>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
             </View>
+
+            {/* Instant Demo Access Button */}
+            <TouchableOpacity
+              style={styles.instantDemoBtn}
+              activeOpacity={0.8}
+              onPress={handleInstantDemo}
+            >
+              <Text style={styles.instantDemoBtnTitle}>⚡ 1-Tap Demo: Enter Home Screen</Text>
+              <Text style={styles.instantDemoBtnSub}>
+                Instant access as Mama Chinedu Provisions
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* Footer Note */}
@@ -239,11 +251,43 @@ const styles = StyleSheet.create({
   submitBtn: {
     marginTop: 20,
   },
-  pilotSection: {
-    marginTop: 20,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 18,
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+  dividerText: {
+    ...TYPOGRAPHY.caption,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    fontSize: 11,
+  },
+  instantDemoBtn: {
+    backgroundColor: COLORS.primarySurface,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  instantDemoBtnTitle: {
+    ...TYPOGRAPHY.bodyBold,
+    color: COLORS.primary,
+    fontSize: 14,
+  },
+  instantDemoBtnSub: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.primaryLight,
+    fontSize: 11,
+    marginTop: 2,
   },
   pilotTitle: {
     ...TYPOGRAPHY.caption,

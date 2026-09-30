@@ -22,13 +22,8 @@ function RootNavigation() {
       if (!inAuthGroup || segArray[1] !== 'login') {
         router.replace('/(auth)/login');
       }
-    } else if (!business) {
-      // Logged in but hasn't set up business -> go to setup
-      if (segArray[1] !== 'business-setup') {
-        router.replace('/(auth)/business-setup');
-      }
     } else {
-      // Logged in & business configured -> go to main tabs
+      // Logged in -> go straight to main tabs
       if (inAuthGroup) {
         router.replace('/(tabs)');
       }

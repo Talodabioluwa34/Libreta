@@ -6,20 +6,26 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Linking,
 } from 'react-native';
 import { useAuth } from '@/src/context/AuthContext';
-import { COLORS, formatNaira, TOUCH_TARGET, TYPOGRAPHY } from '@/src/constants/theme';
+import { formatNaira, TYPOGRAPHY } from '@/src/constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  PlusCircle,
+  Plus,
   CreditCard,
   Receipt,
-  AlertCircle,
-  TrendingUp,
+  Eye,
+  EyeOff,
+  Search,
+  ChevronDown,
+  Users,
+  MessageCircle,
+  ChevronRight,
   ArrowDownLeft,
   ArrowUpRight,
-  Clock,
-  Sparkles,
+  Store,
+  UserCheck,
 } from 'lucide-react-native';
 import { Badge } from '@/src/components/ui/Badge';
 import { useRouter } from 'expo-router';
@@ -33,8 +39,9 @@ import { RecordExpenseModal } from '@/src/components/modals/RecordExpenseModal';
 export default function HomeScreen() {
   const router = useRouter();
   const { business } = useAuth();
-  const { summary, totalDebtOwed, sales, expenses } = useTransactions();
+  const { summary, totalDebtOwed, sales, customers } = useTransactions();
   const [refreshing, setRefreshing] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
 
   const [saleModalVisible, setSaleModalVisible] = useState(false);
   const [debtModalVisible, setDebtModalVisible] = useState(false);
@@ -48,121 +55,258 @@ export default function HomeScreen() {
 
   const isDebtOnly = business?.mode === 'debt_only';
 
+  const displayAmount = (amount: number) => {
+    if (isPrivate) return '••••••';
+    return formatNaira(amount);
+  };
+
+  const debtors = customers.filter((c) => (c.outstanding_balance || 0) > 0);
+  const topDebtor = debtors.length > 0 ? debtors[0] : null;
+  const latestSale = sales.length > 0 ? sales[0] : null;
+
+  const handleWhatsAppReminder = (phone?: string, name?: string, balance?: number) => {
+    if (!phone) {
+      router.push('/(tabs)/owes');
+      return;
+    }
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const message = encodeURIComponent(
+      `Hello ${name || 'Customer'}, friendly reminder from ${
+        business?.name || 'our shop'
+      } for your balance of ${formatNaira(balance || 0)}. Thank you!`
+    );
+    Linking.openURL(`whatsapp://send?phone=${cleanPhone}&text=${message}`).catch(() => {
+      router.push('/(tabs)/owes');
+    });
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brandAccent} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#006B4D" />
         }
       >
-        {/* Header with Business Title */}
+        {/* =========================================================================
+            1. TOP BAR (Clean, Native, Space-Conscious)
+        ========================================================================= */}
         <View style={styles.topBar}>
-          <View>
-            <Text style={styles.greetingText}>Daily Business Book</Text>
-            <Text style={styles.businessTitle}>{business?.name || 'My Shop'}</Text>
-          </View>
-          <View style={styles.modeTag}>
-            <Text style={styles.modeTagText}>
-              {isDebtOnly ? '⚡ Debt-Only Mode' : '📘 Full Book'}
-            </Text>
+          <TouchableOpacity
+            style={styles.shopIdentityBtn}
+            activeOpacity={0.7}
+            onPress={() => router.push('/(tabs)/more')}
+          >
+            <View style={styles.shopAvatar}>
+              <Text style={styles.shopAvatarText}>
+                {(business?.name || 'M')[0].toUpperCase()}
+              </Text>
+            </View>
+            <View style={styles.shopInfoCol}>
+              <View style={styles.shopNameRow}>
+                <Text style={styles.businessTitle} numberOfLines={1}>
+                  {business?.name || 'Mama Chinedu Provisions'}
+                </Text>
+                <ChevronDown size={14} color="#64748B" />
+              </View>
+              <Text style={styles.modeSubText}>
+                {isDebtOnly ? '⚡ Debt-Only Mode' : 'Daily Business Book'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.topBarRight}>
+            <View style={styles.syncPill}>
+              <View style={styles.syncDot} />
+              <Text style={styles.syncText}>Synced</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.searchIconButton}
+              activeOpacity={0.7}
+              onPress={() => router.push('/(tabs)/sales')}
+            >
+              <Search size={18} color="#0F172A" />
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* PRD §8.16: If in Debt-Only Mode, lead with Owes */}
-        {isDebtOnly ? (
-          <View style={styles.debtBannerCard}>
-            <View style={styles.debtHeaderRow}>
-              <View style={styles.debtIconBox}>
-                <AlertCircle size={24} color={COLORS.statusUnpaid} />
+        {/* =========================================================================
+            2. HERO COCKPIT (OPay Pattern: Unified Card + Seamless Docked Ticker)
+        ========================================================================= */}
+        <View style={styles.heroCardContainer}>
+          {/* Main Green Body */}
+          <View style={styles.heroMainBody}>
+            {/* Header: Label + Privacy Eye + Embedded Action Button */}
+            <View style={styles.heroTopRow}>
+              <View style={styles.heroLabelRow}>
+                <Text style={styles.heroLabel}>
+                  {isDebtOnly ? 'OUTSTANDING DEBT' : "TODAY'S TOTAL SALES"}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setIsPrivate(!isPrivate)}
+                  activeOpacity={0.7}
+                  style={styles.eyeBtn}
+                >
+                  {isPrivate ? (
+                    <EyeOff size={15} color="rgba(255, 255, 255, 0.7)" />
+                  ) : (
+                    <Eye size={15} color="rgba(255, 255, 255, 0.7)" />
+                  )}
+                </TouchableOpacity>
               </View>
-              <View>
-                <Text style={styles.debtCardLabel}>Total People Owe You</Text>
-                <Text style={styles.debtAmount}>{formatNaira(totalDebtOwed)}</Text>
+
+              {/* Embedded Primary Action Button */}
+              <TouchableOpacity
+                style={styles.heroActionPill}
+                activeOpacity={0.85}
+                onPress={() => {
+                  if (isDebtOnly) {
+                    setDebtModalVisible(true);
+                  } else {
+                    setSaleModalVisible(true);
+                  }
+                }}
+              >
+                <Plus size={14} color="#005A3E" strokeWidth={3} />
+                <Text style={styles.heroActionPillText}>
+                  {isDebtOnly ? 'Add Debt' : 'Record Sale'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Huge Clean Hero Amount */}
+            <View style={styles.heroAmountRow}>
+              <Text style={styles.heroAmountText}>
+                {isDebtOnly ? displayAmount(totalDebtOwed) : displayAmount(summary.sales)}
+              </Text>
+            </View>
+
+            {/* Translucent Glass Financial Metrics Strip */}
+            {!isDebtOnly ? (
+              <View style={styles.glassShelf}>
+                <View style={styles.glassCol}>
+                  <View style={styles.glassLabelRow}>
+                    <View style={[styles.glassDot, { backgroundColor: '#34D399' }]} />
+                    <Text style={styles.glassLabel}>Cash in Hand</Text>
+                  </View>
+                  <Text style={styles.glassValue}>
+                    {displayAmount(summary.collected)}
+                  </Text>
+                </View>
+
+                <View style={styles.glassDivider} />
+
+                <View style={styles.glassCol}>
+                  <View style={styles.glassLabelRow}>
+                    <View style={[styles.glassDot, { backgroundColor: '#F87171' }]} />
+                    <Text style={styles.glassLabel}>Given on Credit</Text>
+                  </View>
+                  <Text style={[styles.glassValue, { color: '#FECACA' }]}>
+                    {displayAmount(summary.new_credit)}
+                  </Text>
+                </View>
+
+                <View style={styles.glassDivider} />
+
+                <View style={styles.glassCol}>
+                  <View style={styles.glassLabelRow}>
+                    <View style={[styles.glassDot, { backgroundColor: '#FBBF24' }]} />
+                    <Text style={styles.glassLabel}>Spent (Stock)</Text>
+                  </View>
+                  <Text style={styles.glassValue}>
+                    {displayAmount(summary.expenses)}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+          </View>
+
+          {/* Seamless Docked Ticker (OPay Pattern: Pinned into the bottom lip of the card) */}
+          {latestSale ? (
+            <TouchableOpacity
+              style={styles.dockedTicker}
+              activeOpacity={0.8}
+              onPress={() => router.push('/(tabs)/sales')}
+            >
+              <View style={styles.dockedTickerLeft}>
+                <View style={styles.tickerIconBadge}>
+                  <ArrowDownLeft size={11} color="#006B4D" strokeWidth={2.5} />
+                </View>
+                <Text style={styles.dockedTickerText} numberOfLines={1}>
+                  <Text style={styles.dockedBold}>Latest: </Text>
+                  {latestSale.customer_name || 'Walk-in Sale'} · {displayAmount(latestSale.total_amount)}
+                </Text>
+              </View>
+              <View style={styles.dockedTickerRight}>
+                <Text style={styles.dockedStatusText}>
+                  {latestSale.status === 'paid' ? 'Paid' : latestSale.status === 'unpaid' ? 'Credit' : 'Part-Paid'}
+                </Text>
+                <ChevronRight size={13} color="rgba(255, 255, 255, 0.6)" />
+              </View>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        {/* =========================================================================
+            3. ACTIONABLE CUSTOMER DEBT STRIP (Compact, High-Value Ledger Row)
+        ========================================================================= */}
+        {debtors.length > 0 ? (
+          <View style={styles.debtStripCard}>
+            <View style={styles.debtStripLeft}>
+              <View style={styles.debtAlertIconCircle}>
+                <UserCheck size={16} color="#DC2626" />
+              </View>
+              <View style={styles.debtStripTextCol}>
+                <Text style={styles.debtStripTitle}>
+                  {debtors.length} Customers Owe You {displayAmount(totalDebtOwed)}
+                </Text>
+                <Text style={styles.debtStripSub} numberOfLines={1}>
+                  {topDebtor ? `Top: ${topDebtor.name} (${displayAmount(topDebtor.outstanding_balance || 0)})` : 'Tap to open debt book'}
+                </Text>
               </View>
             </View>
-            <View style={styles.debtFooterRow}>
-              <Text style={styles.debtCountText}>
-                <Text style={styles.boldWhite}>{summary.customers_owing_count} customers</Text> have
-                active balances
-              </Text>
+
+            <View style={styles.debtStripActions}>
+              {topDebtor ? (
+                <TouchableOpacity
+                  style={styles.whatsappPillBtn}
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    handleWhatsAppReminder(
+                      topDebtor.phone,
+                      topDebtor.name,
+                      topDebtor.outstanding_balance || 0
+                    )
+                  }
+                >
+                  <MessageCircle size={13} color="#FFFFFF" />
+                  <Text style={styles.whatsappPillText}>Remind</Text>
+                </TouchableOpacity>
+              ) : null}
+
               <TouchableOpacity
-                style={styles.viewOwesBtn}
+                style={styles.openBookArrowBtn}
+                activeOpacity={0.7}
                 onPress={() => router.push('/(tabs)/owes')}
               >
-                <Text style={styles.viewOwesBtnText}>View List →</Text>
+                <ChevronRight size={18} color="#94A3B8" />
               </TouchableOpacity>
             </View>
           </View>
-        ) : (
-          /* PRD §8.10: Full Dashboard Daily Summary Card */
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryHeader}>
-              <Text style={styles.summaryTitle}>Today's Business Movement</Text>
-              <View style={styles.dateBadge}>
-                <Clock size={12} color={COLORS.textSecondary} />
-                <Text style={styles.dateBadgeText}>Today</Text>
-              </View>
-            </View>
+        ) : null}
 
-            {/* Net Movement Hero Box (Collected - Expenses) */}
-            <View style={styles.netMovementHero}>
-              <Text style={styles.netMovementLabel}>Net Money Movement (Cash in hand)</Text>
-              <Text style={styles.netMovementValue}>{formatNaira(summary.net_movement)}</Text>
-              <Text style={styles.netMovementFormula}>
-                Calculated as: Cash Collected ({formatNaira(summary.collected)}) − Spent ({formatNaira(summary.expenses)})
-              </Text>
-            </View>
-
-            {/* Metrics Breakdown Grid */}
-            <View style={styles.metricsGrid}>
-              <View style={styles.metricItem}>
-                <View style={styles.metricIconLabel}>
-                  <TrendingUp size={16} color={COLORS.primary} />
-                  <Text style={styles.metricLabel}>Total Sales</Text>
-                </View>
-                <Text style={styles.metricValue}>{formatNaira(summary.sales)}</Text>
-              </View>
-
-              <View style={styles.metricItem}>
-                <View style={styles.metricIconLabel}>
-                  <ArrowDownLeft size={16} color={COLORS.statusPaid} />
-                  <Text style={styles.metricLabel}>Cash Collected</Text>
-                </View>
-                <Text style={[styles.metricValue, { color: COLORS.statusPaid }]}>
-                  {formatNaira(summary.collected)}
-                </Text>
-              </View>
-
-              <View style={styles.metricItem}>
-                <View style={styles.metricIconLabel}>
-                  <AlertCircle size={16} color={COLORS.statusUnpaid} />
-                  <Text style={styles.metricLabel}>New Credit (Owed)</Text>
-                </View>
-                <Text style={[styles.metricValue, { color: COLORS.statusUnpaid }]}>
-                  {formatNaira(summary.new_credit)}
-                </Text>
-              </View>
-
-              <View style={styles.metricItem}>
-                <View style={styles.metricIconLabel}>
-                  <ArrowUpRight size={16} color={COLORS.textSecondary} />
-                  <Text style={styles.metricLabel}>Expenses</Text>
-                </View>
-                <Text style={styles.metricValue}>{formatNaira(summary.expenses)}</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Quick Action Buttons (Large Touch Targets, PRD §8.3) */}
-        <View style={styles.quickActionsContainer}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsRow}>
-            {/* Record Sale / Add Debt */}
+        {/* =========================================================================
+            4. PRIMARY ACTION HUB (OPay 4-Grid Masterclass: Unified Brand Styling)
+        ========================================================================= */}
+        <View style={styles.actionHubSection}>
+          <Text style={styles.sectionHeading}>Quick Actions</Text>
+          <View style={styles.actionGridRow}>
+            {/* 1. Record Sale */}
             <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: COLORS.primary }]}
-              activeOpacity={0.8}
+              style={styles.actionItem}
+              activeOpacity={0.75}
               onPress={() => {
                 if (isDebtOnly) {
                   setDebtModalVisible(true);
@@ -171,84 +315,112 @@ export default function HomeScreen() {
                 }
               }}
             >
-              <PlusCircle size={28} color={COLORS.textInverse} />
-              <Text style={styles.actionCardTitle}>
+              <View style={styles.actionIconSquircle}>
+                <Plus size={22} color="#006B4D" strokeWidth={2.5} />
+              </View>
+              <Text style={styles.actionItemLabel}>
                 {isDebtOnly ? 'Add Debt' : 'Record Sale'}
               </Text>
-              <Text style={styles.actionCardSubtitle}>
-                {isDebtOnly ? 'Log who took goods' : 'Cash or Credit'}
-              </Text>
             </TouchableOpacity>
 
-            {/* Record Payment */}
+            {/* 2. Collect Debt */}
             <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: COLORS.surface }]}
-              activeOpacity={0.8}
+              style={styles.actionItem}
+              activeOpacity={0.75}
               onPress={() => setPaymentModalVisible(true)}
             >
-              <CreditCard size={28} color={COLORS.brandAccent} />
-              <Text style={[styles.actionCardTitle, { color: COLORS.textPrimary }]}>
-                Record Payment
-              </Text>
-              <Text style={styles.actionCardSubtitle}>Customer debt payment</Text>
+              <View style={styles.actionIconSquircle}>
+                <CreditCard size={20} color="#006B4D" strokeWidth={2.2} />
+              </View>
+              <Text style={styles.actionItemLabel}>Collect Debt</Text>
             </TouchableOpacity>
 
-            {/* Record Expense */}
+            {/* 3. Add Expense */}
             <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: COLORS.surface }]}
-              activeOpacity={0.8}
+              style={styles.actionItem}
+              activeOpacity={0.75}
               onPress={() => setExpenseModalVisible(true)}
             >
-              <Receipt size={28} color={COLORS.statusPartPaid} />
-              <Text style={[styles.actionCardTitle, { color: COLORS.textPrimary }]}>
-                Record Expense
-              </Text>
-              <Text style={styles.actionCardSubtitle}>Stock or Running cost</Text>
+              <View style={styles.actionIconSquircle}>
+                <Receipt size={20} color="#006B4D" strokeWidth={2.2} />
+              </View>
+              <Text style={styles.actionItemLabel}>Add Expense</Text>
+            </TouchableOpacity>
+
+            {/* 4. Customers */}
+            <TouchableOpacity
+              style={styles.actionItem}
+              activeOpacity={0.75}
+              onPress={() => router.push('/(tabs)/customers')}
+            >
+              <View style={styles.actionIconSquircle}>
+                <Users size={20} color="#006B4D" strokeWidth={2.2} />
+              </View>
+              <Text style={styles.actionItemLabel}>Customers</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Who Owes You Widget */}
-        <TouchableOpacity
-          style={styles.owesBanner}
-          activeOpacity={0.8}
-          onPress={() => router.push('/(tabs)/owes')}
-        >
-          <View style={styles.owesBannerLeft}>
-            <View style={styles.owesBadge}>
-              <Text style={styles.owesBadgeText}>{summary.customers_owing_count}</Text>
-            </View>
+        {/* =========================================================================
+            5. TODAY'S SALES BOOK FEED (Clean Native List, No Clunky Borders)
+        ========================================================================= */}
+        <View style={styles.ledgerSection}>
+          <View style={styles.ledgerSectionHeader}>
             <View>
-              <Text style={styles.owesBannerTitle}>Customers Currently Owing</Text>
-              <Text style={styles.owesBannerSubtitle}>Tap to check balances & send reminders</Text>
+              <Text style={styles.sectionHeading}>Today's Ledger</Text>
+              <Text style={styles.ledgerSubHeading}>
+                {sales.length} transactions recorded today
+              </Text>
             </View>
-          </View>
-          <Text style={styles.owesBannerAmount}>{formatNaira(totalDebtOwed)}</Text>
-        </TouchableOpacity>
-
-        {/* Recent Transactions List */}
-        <View style={styles.recentSection}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/sales')}>
-              <Text style={styles.viewAllLink}>View All</Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => router.push('/(tabs)/sales')}
+            >
+              <Text style={styles.seeAllLinkText}>See All →</Text>
             </TouchableOpacity>
           </View>
 
-          {sales.slice(0, 5).map((s) => (
-            <View key={s.id} style={styles.txRow}>
-              <View style={styles.txLeft}>
-                <Text style={styles.txTitle}>{s.customer_name || 'Walk-in Cash Customer'}</Text>
-                <Text style={styles.txItem}>{s.note || 'Sale'}</Text>
-                <Text style={styles.txTime}>Today</Text>
+          <View style={styles.ledgerListCard}>
+            {sales.length === 0 ? (
+              <View style={styles.emptyFeed}>
+                <Store size={30} color="#94A3B8" />
+                <Text style={styles.emptyFeedTitle}>No sales recorded yet today</Text>
+                <Text style={styles.emptyFeedSub}>
+                  Tap "+ Record Sale" above to log your first transaction.
+                </Text>
               </View>
+            ) : (
+              sales.slice(0, 5).map((s, idx) => (
+                <View
+                  key={s.id}
+                  style={[
+                    styles.txRowItem,
+                    idx === sales.slice(0, 5).length - 1 ? { borderBottomWidth: 0 } : null,
+                  ]}
+                >
+                  <View style={styles.txIconBubble}>
+                    <Receipt size={16} color="#006B4D" />
+                  </View>
 
-              <View style={styles.txRight}>
-                <Text style={styles.txAmount}>{formatNaira(s.total_amount)}</Text>
-                <Badge status={s.status} />
-              </View>
-            </View>
-          ))}
+                  <View style={styles.txDetailsCol}>
+                    <Text style={styles.txItemTitle} numberOfLines={1}>
+                      {s.note || 'General Merchandise'}
+                    </Text>
+                    <Text style={styles.txCustomerSub}>
+                      {s.customer_name || 'Walk-in Cash Customer'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.txAmountCol}>
+                    <Text style={styles.txAmountText}>
+                      {displayAmount(s.total_amount)}
+                    </Text>
+                    <Badge status={s.status} />
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
         </View>
       </ScrollView>
 
@@ -276,310 +448,456 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#F8FAFC',
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 24,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 32,
   },
+
+  /* 1. TOP BAR */
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    paddingVertical: 2,
   },
-  greetingText: {
-    ...TYPOGRAPHY.caption,
-    textTransform: 'uppercase',
-    fontWeight: '700',
-    color: COLORS.brandAccent,
-  },
-  businessTitle: {
-    ...TYPOGRAPHY.titleMedium,
-    fontSize: 24,
-    color: COLORS.textPrimary,
-  },
-  modeTag: {
-    backgroundColor: COLORS.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  modeTagText: {
-    ...TYPOGRAPHY.caption,
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-  },
-  summaryCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    marginBottom: 20,
-  },
-  summaryHeader: {
+  shopIdentityBtn: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    gap: 10,
+    flex: 1,
   },
-  summaryTitle: {
-    ...TYPOGRAPHY.bodyBold,
-    color: COLORS.textPrimary,
+  shopAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#006B4D',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#006B4D',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  dateBadge: {
+  shopAvatarText: {
+    color: '#FFFFFF',
+    fontWeight: '900',
+    fontSize: 16,
+  },
+  shopInfoCol: {
+    flex: 1,
+  },
+  shopNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: COLORS.surfaceSubtle,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
   },
-  dateBadgeText: {
-    ...TYPOGRAPHY.caption,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
+  businessTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.3,
   },
-  netMovementHero: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  netMovementLabel: {
-    ...TYPOGRAPHY.caption,
-    color: '#94A3B8',
-    fontWeight: '600',
-  },
-  netMovementValue: {
-    ...TYPOGRAPHY.amountDisplay,
-    color: COLORS.textInverse,
-    marginVertical: 4,
-  },
-  netMovementFormula: {
-    ...TYPOGRAPHY.caption,
-    color: '#94A3B8',
+  modeSubText: {
     fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+    marginTop: 1,
   },
-  metricsGrid: {
+  topBarRight: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+    alignItems: 'center',
+    gap: 8,
   },
-  metricItem: {
-    flex: 1,
-    minWidth: '45%',
-    backgroundColor: COLORS.surfaceSubtle,
-    borderRadius: 10,
-    padding: 12,
+  syncPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  metricIconLabel: {
+  syncDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  syncText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  searchIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  /* 2. HERO COCKPIT CARD */
+  heroCardContainer: {
+    backgroundColor: '#005A3E',
+    borderRadius: 22,
+    overflow: 'hidden',
+    marginBottom: 14,
+    shadowColor: '#005A3E',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  heroMainBody: {
+    padding: 18,
+    paddingBottom: 16,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  heroLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 4,
   },
-  metricLabel: {
-    ...TYPOGRAPHY.caption,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
+  heroLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    color: 'rgba(255, 255, 255, 0.7)',
   },
-  metricValue: {
-    ...TYPOGRAPHY.titleSmall,
-    fontWeight: '700',
+  eyeBtn: {
+    padding: 4,
   },
-  debtBannerCard: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-  },
-  debtHeaderRow: {
+  heroActionPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 5,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  heroActionPillText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#005A3E',
+  },
+  heroAmountRow: {
     marginBottom: 14,
   },
-  debtIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(220, 38, 38, 0.15)',
+  heroAmountText: {
+    fontSize: 38,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -1,
+  },
+
+  /* Translucent Glass Metrics Shelf */
+  glassShelf: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  glassCol: {
+    flex: 1,
+  },
+  glassLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 3,
+  },
+  glassDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+  },
+  glassLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.75)',
+  },
+  glassValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+  },
+  glassDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    marginHorizontal: 8,
+  },
+
+  /* Docked Ticker (OPay Seamless Lip) */
+  dockedTicker: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.28)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  dockedTickerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  tickerIconBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#E6F4EE',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  debtCardLabel: {
-    ...TYPOGRAPHY.caption,
-    color: '#94A3B8',
-    fontWeight: '600',
+  dockedTickerText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.9)',
+    flexShrink: 1,
   },
-  debtAmount: {
-    ...TYPOGRAPHY.amountDisplay,
-    color: COLORS.textInverse,
+  dockedBold: {
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
-  debtFooterRow: {
+  dockedTickerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  dockedStatusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#A7F3D0',
+  },
+
+  /* 3. CUSTOMER DEBT STRIP */
+  debtStripCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#334155',
-  },
-  debtCountText: {
-    ...TYPOGRAPHY.caption,
-    color: '#94A3B8',
-    flex: 1,
-  },
-  boldWhite: {
-    fontWeight: '700',
-    color: COLORS.textInverse,
-  },
-  viewOwesBtn: {
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  viewOwesBtnText: {
-    ...TYPOGRAPHY.caption,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  quickActionsContainer: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    ...TYPOGRAPHY.titleSmall,
-    color: COLORS.textPrimary,
-    marginBottom: 10,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  actionCard: {
-    flex: 1,
-    borderRadius: 14,
-    padding: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    minHeight: 110,
-    justifyContent: 'space-between',
+    borderColor: '#FEE2E2',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  actionCardTitle: {
-    ...TYPOGRAPHY.bodyBold,
-    color: COLORS.textInverse,
-    fontSize: 13,
-    marginTop: 8,
-  },
-  actionCardSubtitle: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textMuted,
-    fontSize: 10,
-  },
-  owesBanner: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1.5,
-    borderColor: '#FCA5A5',
-    borderRadius: 14,
-    padding: 14,
+  debtStripLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
+    gap: 10,
+    flex: 1,
   },
-  owesBannerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  owesBadge: {
-    backgroundColor: COLORS.statusUnpaid,
+  debtAlertIconCircle: {
     width: 32,
     height: 32,
     borderRadius: 16,
+    backgroundColor: '#FEF2F2',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  owesBadgeText: {
-    color: COLORS.textInverse,
-    fontWeight: '800',
-    fontSize: 14,
-  },
-  owesBannerTitle: {
-    ...TYPOGRAPHY.bodyBold,
-    color: '#991B1B',
-  },
-  owesBannerSubtitle: {
-    ...TYPOGRAPHY.caption,
-    color: '#B91C1C',
-    fontSize: 11,
-  },
-  owesBannerAmount: {
-    ...TYPOGRAPHY.titleSmall,
-    color: '#991B1B',
-    fontWeight: '800',
-  },
-  recentSection: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  viewAllLink: {
-    ...TYPOGRAPHY.caption,
-    fontWeight: '700',
-    color: COLORS.brandAccent,
-  },
-  txRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.surfaceSubtle,
-  },
-  txLeft: {
+  debtStripTextCol: {
     flex: 1,
   },
-  txTitle: {
-    ...TYPOGRAPHY.bodyBold,
-    color: COLORS.textPrimary,
+  debtStripTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#991B1B',
   },
-  txItem: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
-    marginVertical: 2,
-  },
-  txTime: {
-    ...TYPOGRAPHY.caption,
+  debtStripSub: {
     fontSize: 11,
-    color: COLORS.textMuted,
+    color: '#64748B',
+    marginTop: 1,
+    fontWeight: '500',
   },
-  txRight: {
+  debtStripActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  whatsappPillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#25D366',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  whatsappPillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  openBookArrowBtn: {
+    padding: 2,
+  },
+
+  /* 4. PRIMARY ACTIONS HUB (OPay 4-Grid Layout) */
+  actionHubSection: {
+    marginBottom: 18,
+  },
+  sectionHeading: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.3,
+    marginBottom: 10,
+  },
+  actionGridRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionItem: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  actionIconSquircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#E6F4EE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  actionItemLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0F172A',
+    textAlign: 'center',
+  },
+
+  /* 5. TODAY'S SALES BOOK FEED */
+  ledgerSection: {
+    marginBottom: 16,
+  },
+  ledgerSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  ledgerSubHeading: {
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: -8,
+  },
+  seeAllLinkText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#006B4D',
+  },
+  ledgerListCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 16,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  emptyFeed: {
+    paddingVertical: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  emptyFeedTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#475569',
+    marginTop: 4,
+  },
+  emptyFeedSub: {
+    fontSize: 12,
+    color: '#94A3B8',
+    textAlign: 'center',
+  },
+  txRowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  txIconBubble: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E6F4EE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  txDetailsCol: {
+    flex: 1,
+  },
+  txItemTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.2,
+  },
+  txCustomerSub: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  txAmountCol: {
     alignItems: 'flex-end',
     gap: 4,
   },
-  txAmount: {
-    ...TYPOGRAPHY.titleSmall,
-    fontWeight: '700',
+  txAmountText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
   },
 });

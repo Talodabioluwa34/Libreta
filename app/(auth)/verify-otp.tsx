@@ -203,13 +203,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderRadius: 16,
     padding: 24,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 2,
   },
   otpInput: {
     height: 64,
@@ -260,8 +253,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surfaceSubtle,
     borderRadius: 8,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   demoShortcutText: {
     ...TYPOGRAPHY.caption,

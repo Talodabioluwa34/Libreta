@@ -42,20 +42,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderRadius: TOUCH_TARGET.borderRadius,
     padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   elevated: {
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 0,
+    backgroundColor: COLORS.surface,
   },
   outline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: COLORS.borderDark,
+    backgroundColor: COLORS.surfaceSubtle,
   },
 });

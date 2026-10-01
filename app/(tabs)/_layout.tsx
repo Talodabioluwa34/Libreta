@@ -1,14 +1,20 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { COLORS, TYPOGRAPHY } from '@/src/constants/theme';
+import { COLORS, TYPOGRAPHY, FONTS } from '@/src/constants/theme';
 import { Home, ShoppingBag, AlertCircle, Users, Menu } from 'lucide-react-native';
 import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTransactions } from '@/src/context/TransactionContext';
 
 export default function TabsLayout() {
   const { summary } = useTransactions();
   const owingCount = summary?.customers_owing_count || 0;
+  const insets = useSafeAreaInsets();
+
+  // Provide generous clearance above the device's system home navbar / gesture indicator
+  const bottomPadding = insets.bottom > 0 ? insets.bottom + 8 : (Platform.OS === 'ios' ? 28 : 22);
+  const tabHeight = 58 + bottomPadding;
 
   return (
     <Tabs
@@ -20,16 +26,12 @@ export default function TabsLayout() {
           backgroundColor: '#FFFFFF',
           borderTopColor: '#F1F5F9',
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 88 : 66,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
+          height: tabHeight,
+          paddingBottom: bottomPadding,
           paddingTop: 8,
-          elevation: 6,
-          shadowColor: '#0F172A',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.04,
-          shadowRadius: 8,
         },
         tabBarLabelStyle: {
+          fontFamily: FONTS.bold,
           fontSize: 11,
           fontWeight: '700',
           marginTop: 2,
@@ -60,6 +62,7 @@ export default function TabsLayout() {
           tabBarBadgeStyle: {
             backgroundColor: '#DC2626',
             color: '#FFFFFF',
+            fontFamily: FONTS.extraBold,
             fontSize: 10,
             fontWeight: '800',
             lineHeight: 14,

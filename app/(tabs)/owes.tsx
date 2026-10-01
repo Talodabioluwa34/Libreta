@@ -137,8 +137,6 @@ const styles = StyleSheet.create({
   },
   totalBanner: {
     backgroundColor: '#FEF2F2',
-    borderWidth: 1.5,
-    borderColor: '#FCA5A5',
     borderRadius: 16,
     marginHorizontal: 20,
     marginVertical: 12,
@@ -179,8 +177,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
     borderRadius: TOUCH_TARGET.borderRadius,
     marginHorizontal: 20,
     marginBottom: 12,
@@ -196,15 +192,13 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingBottom: 100,
     gap: 12,
   },
   debtCard: {
     backgroundColor: COLORS.surface,
     borderRadius: 14,
     padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -286,8 +280,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 8,
     gap: 4,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   historyBtnText: {
     ...TYPOGRAPHY.caption,

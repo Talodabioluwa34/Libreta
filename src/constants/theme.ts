@@ -84,44 +84,59 @@ export const SPACING = {
   xxl: 40,
 };
 
+export const FONTS = {
+  regular: 'PlusJakartaSans_400Regular',
+  medium: 'PlusJakartaSans_500Medium',
+  semiBold: 'PlusJakartaSans_600SemiBold',
+  bold: 'PlusJakartaSans_700Bold',
+  extraBold: 'PlusJakartaSans_800ExtraBold',
+};
+
 export const TYPOGRAPHY = {
   titleLarge: {
+    fontFamily: FONTS.bold,
     fontSize: 28,
     fontWeight: '700' as const,
     lineHeight: 34,
     color: COLORS.textPrimary,
   },
   titleMedium: {
+    fontFamily: FONTS.bold,
     fontSize: 20,
     fontWeight: '700' as const,
     lineHeight: 26,
     color: COLORS.textPrimary,
   },
   titleSmall: {
+    fontFamily: FONTS.semiBold,
     fontSize: 16,
     fontWeight: '600' as const,
     lineHeight: 22,
     color: COLORS.textPrimary,
   },
   bodyRegular: {
+    fontFamily: FONTS.regular,
     fontSize: 15,
     fontWeight: '400' as const,
     lineHeight: 22,
     color: COLORS.textSecondary,
   },
   bodyBold: {
+    fontFamily: FONTS.semiBold,
     fontSize: 15,
     fontWeight: '600' as const,
     lineHeight: 22,
     color: COLORS.textPrimary,
   },
   caption: {
+    fontFamily: FONTS.medium,
     fontSize: 13,
     fontWeight: '500' as const,
     lineHeight: 18,
     color: COLORS.textMuted,
   },
   amountDisplay: {
+    fontFamily: FONTS.extraBold,
     fontSize: 32,
     fontWeight: '800' as const,
     letterSpacing: -0.5,

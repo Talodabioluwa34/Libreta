@@ -417,8 +417,6 @@ const styles = StyleSheet.create({
     padding: 14,
     alignItems: 'center',
     marginVertical: 6,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   totalHeroLabel: {
     ...TYPOGRAPHY.caption,

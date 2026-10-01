@@ -9,7 +9,7 @@ import {
   Linking,
 } from 'react-native';
 import { useAuth } from '@/src/context/AuthContext';
-import { formatNaira, TYPOGRAPHY } from '@/src/constants/theme';
+import { formatNaira, TYPOGRAPHY, FONTS } from '@/src/constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Plus,
@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 32,
+    paddingBottom: 100,
   },
 
   /* 1. TOP BAR */
@@ -477,11 +477,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#006B4D',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#006B4D',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
   },
   shopAvatarText: {
     color: '#FFFFFF',
@@ -497,12 +492,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   businessTitle: {
+    fontFamily: FONTS.extraBold,
     fontSize: 16,
     fontWeight: '800',
     color: '#0F172A',
     letterSpacing: -0.3,
   },
   modeSubText: {
+    fontFamily: FONTS.semiBold,
     fontSize: 11,
     color: '#64748B',
     fontWeight: '600',
@@ -521,8 +518,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 5,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
   },
   syncDot: {
     width: 6,
@@ -531,6 +526,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#10B981',
   },
   syncText: {
+    fontFamily: FONTS.bold,
     fontSize: 11,
     fontWeight: '700',
     color: '#475569',
@@ -540,8 +536,6 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -552,11 +546,6 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     overflow: 'hidden',
     marginBottom: 14,
-    shadowColor: '#005A3E',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    elevation: 4,
   },
   heroMainBody: {
     padding: 18,
@@ -574,6 +563,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   heroLabel: {
+    fontFamily: FONTS.bold,
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.8,
@@ -590,13 +580,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
   },
   heroActionPillText: {
+    fontFamily: FONTS.bold,
     fontSize: 12,
     fontWeight: '800',
     color: '#005A3E',
@@ -605,6 +591,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   heroAmountText: {
+    fontFamily: FONTS.extraBold,
     fontSize: 38,
     fontWeight: '900',
     color: '#FFFFFF',
@@ -634,11 +621,13 @@ const styles = StyleSheet.create({
     borderRadius: 2.5,
   },
   glassLabel: {
+    fontFamily: FONTS.bold,
     fontSize: 10,
     fontWeight: '700',
     color: 'rgba(255, 255, 255, 0.75)',
   },
   glassValue: {
+    fontFamily: FONTS.bold,
     fontSize: 14,
     fontWeight: '800',
     color: '#FFFFFF',
@@ -658,8 +647,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.28)',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
   },
   dockedTickerLeft: {
     flexDirection: 'row',
@@ -676,11 +663,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dockedTickerText: {
+    fontFamily: FONTS.medium,
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.9)',
     flexShrink: 1,
   },
   dockedBold: {
+    fontFamily: FONTS.bold,
     fontWeight: '800',
     color: '#FFFFFF',
   },
@@ -690,6 +679,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   dockedStatusText: {
+    fontFamily: FONTS.bold,
     fontSize: 11,
     fontWeight: '700',
     color: '#A7F3D0',
@@ -705,13 +695,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 14,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#FEE2E2',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
   },
   debtStripLeft: {
     flexDirection: 'row',
@@ -731,11 +714,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   debtStripTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 13,
     fontWeight: '800',
     color: '#991B1B',
   },
   debtStripSub: {
+    fontFamily: FONTS.medium,
     fontSize: 11,
     color: '#64748B',
     marginTop: 1,
@@ -756,6 +741,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   whatsappPillText: {
+    fontFamily: FONTS.bold,
     fontSize: 11,
     fontWeight: '800',
     color: '#FFFFFF',
@@ -769,6 +755,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   sectionHeading: {
+    fontFamily: FONTS.bold,
     fontSize: 15,
     fontWeight: '800',
     color: '#0F172A',
@@ -787,13 +774,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
   },
   actionIconSquircle: {
     width: 44,
@@ -805,6 +785,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   actionItemLabel: {
+    fontFamily: FONTS.bold,
     fontSize: 11,
     fontWeight: '700',
     color: '#0F172A',
@@ -822,11 +803,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   ledgerSubHeading: {
+    fontFamily: FONTS.medium,
     fontSize: 11,
     color: '#94A3B8',
     marginTop: -8,
   },
   seeAllLinkText: {
+    fontFamily: FONTS.bold,
     fontSize: 12,
     fontWeight: '800',
     color: '#006B4D',
@@ -834,14 +817,7 @@ const styles = StyleSheet.create({
   ledgerListCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
     paddingHorizontal: 16,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
   },
   emptyFeed: {
     paddingVertical: 28,
@@ -850,12 +826,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   emptyFeedTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 14,
     fontWeight: '700',
     color: '#475569',
     marginTop: 4,
   },
   emptyFeedSub: {
+    fontFamily: FONTS.medium,
     fontSize: 12,
     color: '#94A3B8',
     textAlign: 'center',
@@ -880,12 +858,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   txItemTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 14,
     fontWeight: '800',
     color: '#0F172A',
     letterSpacing: -0.2,
   },
   txCustomerSub: {
+    fontFamily: FONTS.medium,
     fontSize: 12,
     color: '#64748B',
     marginTop: 2,
@@ -896,6 +876,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   txAmountText: {
+    fontFamily: FONTS.extraBold,
     fontSize: 15,
     fontWeight: '800',
     color: '#0F172A',

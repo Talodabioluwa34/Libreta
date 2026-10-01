@@ -164,8 +164,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
     borderRadius: TOUCH_TARGET.borderRadius,
     marginHorizontal: 20,
     marginVertical: 10,
@@ -191,12 +189,9 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 20,
     backgroundColor: COLORS.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   filterChipSelected: {
     backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
   },
   filterChipText: {
     ...TYPOGRAPHY.caption,
@@ -216,8 +211,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderRadius: 14,
     padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   cardTop: {
     flexDirection: 'row',
@@ -288,11 +281,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 28,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 6,
     gap: 8,
   },
   fabText: {

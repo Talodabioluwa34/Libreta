@@ -279,8 +279,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderRadius: 16,
     padding: 20,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   fieldGroup: {
     marginBottom: 18,
@@ -308,15 +306,12 @@ const styles = StyleSheet.create({
   },
   typeChip: {
     backgroundColor: COLORS.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: COLORS.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   typeChipSelected: {
     backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
   },
   typeChipText: {
     ...TYPOGRAPHY.caption,
@@ -334,8 +329,6 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     marginBottom: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   currencyLabel: {
     ...TYPOGRAPHY.caption,
@@ -351,14 +344,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     padding: 14,
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.surfaceSubtle,
     marginBottom: 10,
   },
   modeCardSelected: {
-    borderColor: COLORS.brandAccent,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#DCFCE7',
   },
   modeIcon: {
     marginRight: 12,
@@ -418,8 +408,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surfaceSubtle,
     borderRadius: 8,
     alignSelf: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   skipBtnText: {
     ...TYPOGRAPHY.caption,

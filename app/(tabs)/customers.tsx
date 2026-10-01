@@ -142,8 +142,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
     borderRadius: TOUCH_TARGET.borderRadius,
     marginHorizontal: 20,
     marginVertical: 10,
@@ -159,7 +157,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingBottom: 100,
     gap: 10,
   },
   customerCard: {
@@ -168,8 +166,6 @@ const styles = StyleSheet.create({
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   avatarCircle: {
     width: 44,

@@ -190,13 +190,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderRadius: 16,
     padding: 24,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 2,
   },
   formTitle: {
     ...TYPOGRAPHY.titleMedium,
@@ -270,8 +263,6 @@ const styles = StyleSheet.create({
   },
   instantDemoBtn: {
     backgroundColor: COLORS.primarySurface,
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -302,8 +293,6 @@ const styles = StyleSheet.create({
   },
   pilotChip: {
     backgroundColor: COLORS.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: COLORS.borderDark,
     borderRadius: 8,
     paddingVertical: 6,
     paddingHorizontal: 12,

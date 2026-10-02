@@ -8,7 +8,8 @@ import {
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS, formatNaira, TOUCH_TARGET, TYPOGRAPHY } from '@/src/constants/theme';
+import { FONTS, formatNaira } from '@/src/constants/theme';
+import { useTheme } from '@/src/context/ThemeContext';
 import { Search, AlertCircle, Phone, ArrowRight, CheckCircle2 } from 'lucide-react-native';
 
 import { useTransactions } from '@/src/context/TransactionContext';
@@ -17,43 +18,69 @@ import { Customer } from '@/src/types';
 
 export default function OwesScreen() {
   const { customers, totalDebtOwed } = useTransactions();
+  const { colors, isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [selectedDebtor, setSelectedDebtor] = useState<Customer | null>(null);
 
   const debtors = customers.filter((c) => (c.outstanding_balance || 0) > 0);
 
-  const filteredDebtors = debtors.filter((d) =>
-    d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (d.phone && d.phone.includes(searchQuery))
+  const filteredDebtors = debtors.filter(
+    (d) =>
+      d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (d.phone && d.phone.includes(searchQuery))
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Who Owes You</Text>
-        <Text style={styles.subtitle}>Outstanding customer debt & payment settlements</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Who Owes You</Text>
+        <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+          Outstanding customer debt & payment settlements
+        </Text>
       </View>
 
       {/* Outstanding Total Banner */}
-      <View style={styles.totalBanner}>
+      <View
+        style={[
+          styles.totalBanner,
+          {
+            backgroundColor: colors.debtSurface,
+            borderColor: colors.debtBorder,
+          },
+        ]}
+      >
         <View style={styles.totalBannerLeft}>
-          <Text style={styles.totalBannerLabel}>Total Outstanding Debt</Text>
-          <Text style={styles.totalBannerAmount}>{formatNaira(totalDebtOwed)}</Text>
-          <Text style={styles.totalBannerSub}>{debtors.length} customers owe you money</Text>
+          <Text style={[styles.totalBannerLabel, { color: colors.debtText }]}>
+            Total Outstanding Debt
+          </Text>
+          <Text style={[styles.totalBannerAmount, { color: colors.debtText }]}>
+            {formatNaira(totalDebtOwed)}
+          </Text>
+          <Text style={[styles.totalBannerSub, { color: colors.debtText }]}>
+            {debtors.length} customers owe you money
+          </Text>
         </View>
-        <View style={styles.alertIconCircle}>
-          <AlertCircle size={28} color={COLORS.statusUnpaid} />
+        <View style={[styles.alertIconCircle, { backgroundColor: 'rgba(220, 38, 38, 0.15)' }]}>
+          <AlertCircle size={26} color={colors.statusUnpaid} />
         </View>
       </View>
 
       {/* Search Input */}
-      <View style={styles.searchBar}>
-        <Search size={18} color={COLORS.textMuted} />
+      <View
+        style={[
+          styles.searchBar,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+          },
+        ]}
+      >
+        <Search size={18} color={colors.textMuted} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: colors.textPrimary }]}
           placeholder="Search debtor name or phone..."
-          placeholderTextColor={COLORS.textMuted}
+          placeholderTextColor={colors.textMuted}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -64,43 +91,81 @@ export default function OwesScreen() {
         data={filteredDebtors}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
-          <View style={styles.debtCard}>
+          <View
+            style={[
+              styles.debtCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                shadowOpacity: isDark ? 0 : 0.03,
+              },
+            ]}
+          >
             <View style={styles.cardHeader}>
               <View>
-                <Text style={styles.debtorName}>{item.name}</Text>
-                <View style={styles.phoneRow}>
-                  <Phone size={13} color={COLORS.textMuted} />
-                  <Text style={styles.phoneText}>{item.phone}</Text>
-                </View>
+                <Text style={[styles.debtorName, { color: colors.textPrimary }]}>
+                  {item.name}
+                </Text>
+                {item.phone ? (
+                  <View style={styles.phoneRow}>
+                    <Phone size={12} color={colors.textMuted} />
+                    <Text style={[styles.phoneText, { color: colors.textMuted }]}>
+                      {item.phone}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
 
-              <View style={styles.balanceBadge}>
-                <Text style={styles.balanceLabel}>Owes</Text>
-                <Text style={styles.balanceAmount}>{formatNaira(item.outstanding_balance || 0)}</Text>
+              <View style={[styles.balanceBadge, { backgroundColor: colors.debtSurface }]}>
+                <Text style={[styles.balanceLabel, { color: colors.statusUnpaid }]}>Owes</Text>
+                <Text style={[styles.balanceAmount, { color: colors.statusUnpaid }]}>
+                  {formatNaira(item.outstanding_balance || 0)}
+                </Text>
               </View>
             </View>
 
-            <View style={styles.activityBox}>
-              <Text style={styles.activityText}>Notes: {item.notes || 'Active debt account'}</Text>
-            </View>
+            {item.notes ? (
+              <View
+                style={[
+                  styles.activityBox,
+                  { backgroundColor: colors.surfaceSubtle },
+                ]}
+              >
+                <Text style={[styles.activityText, { color: colors.textSecondary }]}>
+                  {item.notes}
+                </Text>
+              </View>
+            ) : null}
 
             <View style={styles.actionsRow}>
               <TouchableOpacity
-                style={styles.recordPaymentBtn}
+                style={[styles.recordPaymentBtn, { backgroundColor: colors.primary }]}
                 activeOpacity={0.8}
                 onPress={() => {
                   setSelectedDebtor(item);
                   setPaymentModalVisible(true);
                 }}
               >
-                <CheckCircle2 size={16} color={COLORS.textInverse} />
+                <CheckCircle2 size={16} color="#FFFFFF" />
                 <Text style={styles.recordPaymentText}>Record Payment</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.historyBtn} activeOpacity={0.7}>
-                <Text style={styles.historyBtnText}>Details</Text>
-                <ArrowRight size={14} color={COLORS.textPrimary} />
+              <TouchableOpacity
+                style={[
+                  styles.historyBtn,
+                  {
+                    backgroundColor: colors.surfaceSubtle,
+                    borderColor: colors.border,
+                  },
+                ]}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.historyBtnText, { color: colors.textPrimary }]}>
+                  Details
+                </Text>
+                <ArrowRight size={13} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -119,7 +184,6 @@ export default function OwesScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   header: {
     paddingHorizontal: 20,
@@ -127,68 +191,64 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   title: {
-    ...TYPOGRAPHY.titleMedium,
+    fontFamily: FONTS.bold,
     fontSize: 24,
   },
   subtitle: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
+    fontFamily: FONTS.medium,
+    fontSize: 13,
     marginTop: 2,
   },
   totalBanner: {
-    backgroundColor: '#FEF2F2',
-    borderRadius: 16,
+    borderRadius: 18,
     marginHorizontal: 20,
     marginVertical: 12,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    borderWidth: 1,
   },
   totalBannerLeft: {
     flex: 1,
   },
   totalBannerLabel: {
-    ...TYPOGRAPHY.caption,
-    color: '#991B1B',
-    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    fontSize: 11,
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
   totalBannerAmount: {
-    ...TYPOGRAPHY.amountDisplay,
+    fontFamily: FONTS.extraBold,
     fontSize: 28,
-    color: '#991B1B',
     marginVertical: 2,
   },
   totalBannerSub: {
-    ...TYPOGRAPHY.caption,
-    color: '#B91C1C',
+    fontFamily: FONTS.medium,
     fontSize: 12,
   },
   alertIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FEE2E2',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: TOUCH_TARGET.borderRadius,
+    borderRadius: 14,
     marginHorizontal: 20,
     marginBottom: 12,
     paddingHorizontal: 12,
-    height: 46,
+    height: 44,
+    borderWidth: 1,
   },
   searchInput: {
     flex: 1,
-    ...TYPOGRAPHY.bodyRegular,
+    fontFamily: FONTS.medium,
     fontSize: 14,
     paddingLeft: 8,
-    color: COLORS.textPrimary,
   },
   listContent: {
     paddingHorizontal: 20,
@@ -196,9 +256,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   debtCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 16,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+    elevation: 1,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -206,9 +270,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   debtorName: {
-    ...TYPOGRAPHY.bodyBold,
-    fontSize: 17,
-    color: COLORS.textPrimary,
+    fontFamily: FONTS.bold,
+    fontSize: 16,
   },
   phoneRow: {
     flexDirection: 'row',
@@ -217,73 +280,65 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   phoneText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textMuted,
+    fontFamily: FONTS.medium,
+    fontSize: 12,
   },
   balanceBadge: {
     alignItems: 'flex-end',
-    backgroundColor: '#FEF2F2',
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: 5,
+    borderRadius: 10,
   },
   balanceLabel: {
-    ...TYPOGRAPHY.caption,
+    fontFamily: FONTS.bold,
     fontSize: 10,
-    fontWeight: '700',
-    color: COLORS.statusUnpaid,
     textTransform: 'uppercase',
   },
   balanceAmount: {
-    ...TYPOGRAPHY.bodyBold,
-    color: COLORS.statusUnpaid,
-    fontWeight: '800',
-    fontSize: 16,
+    fontFamily: FONTS.extraBold,
+    fontSize: 15,
   },
   activityBox: {
-    backgroundColor: COLORS.surfaceSubtle,
-    borderRadius: 6,
+    borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
     marginVertical: 10,
   },
   activityText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
+    fontFamily: FONTS.medium,
     fontSize: 12,
   },
   actionsRow: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 4,
+    marginTop: 10,
   },
   recordPaymentBtn: {
     flex: 1,
-    backgroundColor: COLORS.brandAccent,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 8,
+    height: 42,
+    borderRadius: 12,
     gap: 6,
   },
   recordPaymentText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textInverse,
-    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
+    fontSize: 13,
   },
   historyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.surfaceSubtle,
     paddingHorizontal: 14,
-    borderRadius: 8,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
     gap: 4,
   },
   historyBtnText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textPrimary,
-    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    fontSize: 13,
   },
 });

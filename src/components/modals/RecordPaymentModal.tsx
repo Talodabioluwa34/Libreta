@@ -1,20 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
   Text,
-  TextInput,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { useTransactions } from '@/src/context/TransactionContext';
-import { COLORS, formatNaira, TOUCH_TARGET, TYPOGRAPHY } from '@/src/constants/theme';
-import { Button } from '@/src/components/ui/Button';
+import { FONTS, formatNaira } from '@/src/constants/theme';
+import { useTheme } from '@/src/context/ThemeContext';
 import { Customer, PaymentMethod } from '@/src/types';
-import { X, CheckCircle2, User } from 'lucide-react-native';
+import { NumericKeypad } from '@/src/components/ui/NumericKeypad';
+import { SuccessFeedbackModal } from '@/src/components/ui/SuccessFeedbackModal';
+import { X, CheckCircle2, Banknote, Building2, CreditCard } from 'lucide-react-native';
 
 interface RecordPaymentModalProps {
   visible: boolean;
@@ -22,215 +22,542 @@ interface RecordPaymentModalProps {
   preselectedCustomer?: Customer | null;
 }
 
-const PAYMENT_METHODS: { label: string; value: PaymentMethod }[] = [
-  { label: 'Cash', value: 'cash' },
-  { label: 'Transfer', value: 'transfer' },
-  { label: 'POS', value: 'pos' },
-  { label: 'Other', value: 'other' },
-];
-
 export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   visible,
   onClose,
   preselectedCustomer,
 }) => {
   const { customers, recordPayment } = useTransactions();
+  const { colors, isDark } = useTheme();
 
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>(
-    preselectedCustomer?.id || ''
-  );
-  const [amount, setAmount] = useState<string>('');
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [amountStr, setAmountStr] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
-  const [note, setNote] = useState<string>('');
   const [error, setError] = useState<string>('');
 
-  // Find currently selected customer
-  const currentCustomer =
-    customers.find((c) => c.id === (preselectedCustomer?.id || selectedCustomerId)) ||
-    customers.find((c) => (c.outstanding_balance || 0) > 0);
+  // Success Feedback
+  const [showSuccess, setShowSuccess] = useState<boolean>(false);
+  const [successInfo, setSuccessInfo] = useState<{ amount: number; title: string; subtitle: string }>({
+    amount: 0,
+    title: '',
+    subtitle: '',
+  });
 
-  const activeCustId = currentCustomer?.id || '';
-  const currentDebt = currentCustomer?.outstanding_balance || 0;
-  const numericAmount = parseInt(amount.replace(/[^0-9]/g, '') || '0', 10);
+  useEffect(() => {
+    if (preselectedCustomer) {
+      setSelectedCustomerId(preselectedCustomer.id);
+    } else {
+      const firstDebtor = customers.find((c) => (c.outstanding_balance || 0) > 0);
+      if (firstDebtor && !selectedCustomerId) {
+        setSelectedCustomerId(firstDebtor.id);
+      }
+    }
+  }, [preselectedCustomer, customers, visible]);
+
+  const debtors = customers.filter((c) => (c.outstanding_balance || 0) > 0);
+  const currentCustomer = customers.find((c) => c.id === selectedCustomerId) || debtors[0];
+  const activeDebt = currentCustomer?.outstanding_balance || 0;
+  const numericAmount = parseInt(amountStr || '0', 10);
+
+  const handleKeyPress = (key: string) => {
+    setError('');
+    if (key === 'clear') {
+      setAmountStr('');
+      return;
+    }
+    if (key === 'backspace') {
+      setAmountStr((prev) => (prev.length > 1 ? prev.slice(0, -1) : ''));
+      return;
+    }
+    if (key === '00') {
+      if (!amountStr || amountStr === '0') return;
+      if (amountStr.length >= 8) return;
+      setAmountStr((prev) => prev + '00');
+      return;
+    }
+    if (amountStr.length >= 8) return;
+    if (amountStr === '' && key === '0') return;
+    setAmountStr((prev) => prev + key);
+  };
+
+  const handleIncrement = (delta: number) => {
+    setError('');
+    const current = parseInt(amountStr || '0', 10);
+    const updated = Math.min(activeDebt, current + delta);
+    setAmountStr(updated.toString());
+  };
 
   const handleFullPay = () => {
-    setAmount(currentDebt.toString());
+    setAmountStr(activeDebt.toString());
     setError('');
   };
 
   const handleHalfPay = () => {
-    setAmount(Math.round(currentDebt / 2).toString());
+    setAmountStr(Math.round(activeDebt / 2).toString());
     setError('');
   };
 
   const handleSave = () => {
-    if (!activeCustId) {
-      setError('Please select a customer');
+    if (!currentCustomer) {
+      setError('Please select a customer who owes you');
       return;
     }
     if (numericAmount <= 0) {
-      setError('Please enter a payment amount');
+      setError('Please punch in the payment amount');
       return;
     }
-    // Business rule check (PRD §8.7)
-    if (numericAmount > currentDebt) {
-      setError(`Payment cannot exceed customer's outstanding debt of ${formatNaira(currentDebt)}`);
+    if (numericAmount > activeDebt) {
+      setError(`Payment cannot exceed outstanding balance of ${formatNaira(activeDebt)}`);
       return;
     }
 
     const res = recordPayment({
-      customerId: activeCustId,
+      customerId: currentCustomer.id,
       amount: numericAmount,
       method: paymentMethod,
-      note: note.trim() || undefined,
     });
 
     if (res.success) {
-      resetForm();
-      onClose();
+      const remaining = activeDebt - numericAmount;
+      setSuccessInfo({
+        amount: numericAmount,
+        title: 'Payment Collected!',
+        subtitle: remaining <= 0
+          ? `${currentCustomer.name}'s debt is fully settled! 🎉`
+          : `Remaining balance: ${formatNaira(remaining)}`,
+      });
+      setShowSuccess(true);
     } else {
       setError(res.error || 'Failed to record payment');
     }
   };
 
+  const handleSuccessClose = () => {
+    setShowSuccess(false);
+    resetForm();
+    onClose();
+  };
+
   const resetForm = () => {
-    setAmount('');
-    setNote('');
+    setAmountStr('');
     setError('');
+    setPaymentMethod('cash');
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
-      <View style={styles.overlay}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.sheet}
-        >
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
+        <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
+          {/* Grab handle */}
+          <View style={[styles.dragHandle, { backgroundColor: colors.border }]} />
+
           {/* Header */}
-          <View style={styles.sheetHeader}>
-            <View style={styles.titleRow}>
-              <View style={styles.iconCircle}>
-                <CheckCircle2 size={20} color={COLORS.brandAccent} />
+          <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
+            <View style={styles.headerTitleRow}>
+              <View style={[styles.iconCircle, { backgroundColor: colors.primarySurface }]}>
+                <CheckCircle2 size={18} color={colors.primary} />
               </View>
-              <Text style={styles.sheetTitle}>Record Debt Payment</Text>
+              <View>
+                <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>Collect Debt</Text>
+                <Text style={[styles.sheetSubtitle, { color: colors.textMuted }]}>
+                  Record customer settlement
+                </Text>
+              </View>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <X size={20} color={COLORS.textSecondary} />
+            <TouchableOpacity
+              onPress={onClose}
+              style={[styles.closeBtn, { backgroundColor: colors.surfaceSubtle }]}
+              activeOpacity={0.7}
+            >
+              <X size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
-            {/* Customer Selector if not preselected */}
-            {!preselectedCustomer ? (
-              <View style={styles.field}>
-                <Text style={styles.label}>Select Debtor</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-                  {customers
-                    .filter((c) => (c.outstanding_balance || 0) > 0)
-                    .map((c) => {
-                      const isSelected = activeCustId === c.id;
-                      return (
-                        <TouchableOpacity
-                          key={c.id}
-                          style={[styles.customerChip, isSelected && styles.customerChipSelected]}
-                          onPress={() => {
-                            setSelectedCustomerId(c.id);
-                            setAmount('');
-                            setError('');
-                          }}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            bounces={false}
+          >
+            {/* 1. SELECT WHO IS PAYING */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
+                SELECT WHO IS PAYING
+              </Text>
+              {debtors.length === 0 ? (
+                <View
+                  style={[
+                    styles.noDebtorsBox,
+                    {
+                      backgroundColor: colors.statusPaidBg,
+                      borderColor: colors.statusPaid,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.noDebtorsText, { color: colors.statusPaid }]}>
+                    No outstanding customer debts found! 👏
+                  </Text>
+                </View>
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chipsScroll}
+                >
+                  {debtors.map((c) => {
+                    const isSelected = currentCustomer?.id === c.id;
+                    return (
+                      <TouchableOpacity
+                        key={c.id}
+                        style={[
+                          styles.customerChip,
+                          {
+                            backgroundColor: isSelected
+                              ? colors.primary
+                              : colors.surfaceSubtle,
+                            borderColor: isSelected
+                              ? colors.primary
+                              : colors.border,
+                          },
+                        ]}
+                        onPress={() => {
+                          setSelectedCustomerId(c.id);
+                          setAmountStr('');
+                          setError('');
+                        }}
+                      >
+                        <View
+                          style={[
+                            styles.avatarCircle,
+                            {
+                              backgroundColor: isSelected
+                                ? '#FFFFFF'
+                                : colors.border,
+                            },
+                          ]}
                         >
-                          <Text style={[styles.customerChipText, isSelected && styles.customerChipTextSelected]}>
-                            {c.name} ({formatNaira(c.outstanding_balance || 0)})
+                          <Text
+                            style={[
+                              styles.avatarText,
+                              {
+                                color: isSelected
+                                  ? colors.primary
+                                  : colors.textPrimary,
+                              },
+                            ]}
+                          >
+                            {c.name[0]?.toUpperCase() || 'C'}
                           </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+                        </View>
+                        <View>
+                          <Text
+                            style={[
+                              styles.customerChipText,
+                              {
+                                color: isSelected
+                                  ? '#FFFFFF'
+                                  : colors.textPrimary,
+                                fontFamily: isSelected ? FONTS.bold : FONTS.semiBold,
+                              },
+                            ]}
+                          >
+                            {c.name}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.customerChipDebt,
+                              {
+                                color: isSelected
+                                  ? '#FECACA'
+                                  : colors.statusUnpaid,
+                              },
+                            ]}
+                          >
+                            Owes {formatNaira(c.outstanding_balance || 0)}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </ScrollView>
+              )}
+            </View>
+
+            {/* Active Debtor Banner */}
+            {currentCustomer && (
+              <View
+                style={[
+                  styles.activeDebtorBanner,
+                  {
+                    backgroundColor: colors.debtSurface,
+                    borderColor: colors.debtBorder,
+                  },
+                ]}
+              >
+                <View>
+                  <Text style={[styles.activeDebtorLabel, { color: colors.debtText }]}>
+                    TOTAL DEBT FOR {currentCustomer.name.toUpperCase()}
+                  </Text>
+                  <Text style={[styles.activeDebtorAmount, { color: colors.debtText }]}>
+                    {formatNaira(activeDebt)}
+                  </Text>
+                </View>
+                <View style={styles.quickSettleRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.quickSettleBtn,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.debtBorder,
+                      },
+                    ]}
+                    onPress={handleFullPay}
+                  >
+                    <Text style={[styles.quickSettleBtnText, { color: colors.statusUnpaid }]}>
+                      All ({formatNaira(activeDebt)})
+                    </Text>
+                  </TouchableOpacity>
+                  {activeDebt > 500 && (
+                    <TouchableOpacity
+                      style={[
+                        styles.quickSettleBtn,
+                        {
+                          backgroundColor: colors.surface,
+                          borderColor: colors.debtBorder,
+                        },
+                      ]}
+                      onPress={handleHalfPay}
+                    >
+                      <Text style={[styles.quickSettleBtnText, { color: colors.statusUnpaid }]}>
+                        Half ({formatNaira(Math.round(activeDebt / 2))})
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* 2. HERO AMOUNT DISPLAY */}
+            <View
+              style={[
+                styles.heroAmountBox,
+                {
+                  backgroundColor: colors.surfaceSubtle,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.nairaSymbol, { color: colors.primary }]}>₦</Text>
+              <Text
+                style={[
+                  styles.heroAmountText,
+                  { color: colors.textPrimary },
+                  !amountStr && { color: colors.textMuted },
+                ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {numericAmount > 0 ? numericAmount.toLocaleString('en-NG') : '0'}
+              </Text>
+            </View>
+
+            {/* Error Banner */}
+            {error ? (
+              <View
+                style={[
+                  styles.errorBanner,
+                  {
+                    backgroundColor: colors.statusUnpaidBg,
+                    borderColor: colors.statusUnpaid,
+                  },
+                ]}
+              >
+                <Text style={[styles.errorBannerText, { color: colors.statusUnpaid }]}>
+                  {error}
+                </Text>
               </View>
             ) : null}
 
-            {/* Outstanding Balance Banner */}
-            <View style={styles.debtBanner}>
-              <View>
-                <Text style={styles.debtBannerLabel}>Customer: {currentCustomer?.name}</Text>
-                <Text style={styles.debtBannerSub}>Current Outstanding Debt</Text>
-              </View>
-              <Text style={styles.debtBannerAmount}>{formatNaira(currentDebt)}</Text>
-            </View>
-
-            {/* Amount Paid */}
-            <View style={styles.field}>
-              <Text style={styles.label}>Amount Paying Today (₦)</Text>
-              <TextInput
-                style={styles.amountInput}
-                placeholder="₦0"
-                placeholderTextColor={COLORS.textMuted}
-                keyboardType="numeric"
-                value={amount ? parseInt(amount, 10).toLocaleString('en-NG') : ''}
-                onChangeText={(t) => {
-                  const clean = t.replace(/[^0-9]/g, '');
-                  setAmount(clean);
-                  setError('');
-                }}
-              />
-
-              {/* Quick Settlements */}
-              <View style={styles.quickPayRow}>
-                <TouchableOpacity style={styles.quickPayBtn} onPress={handleFullPay}>
-                  <Text style={styles.quickPayText}>Pay Full ({formatNaira(currentDebt)})</Text>
-                </TouchableOpacity>
-                {currentDebt > 1000 ? (
-                  <TouchableOpacity style={styles.quickPayBtn} onPress={handleHalfPay}>
-                    <Text style={styles.quickPayText}>Pay Half ({formatNaira(Math.round(currentDebt / 2))})</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            </View>
-
-            {/* Payment Method */}
-            <View style={styles.field}>
-              <Text style={styles.label}>Payment Method</Text>
+            {/* 3. PAYMENT METHOD (LUCIDE ICONS, NO EMOJIS) */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
+                PAYMENT RECEIVED VIA
+              </Text>
               <View style={styles.methodRow}>
-                {PAYMENT_METHODS.map((m) => {
-                  const isSelected = paymentMethod === m.value;
-                  return (
-                    <TouchableOpacity
-                      key={m.value}
-                      style={[styles.methodChip, isSelected && styles.methodChipSelected]}
-                      onPress={() => setPaymentMethod(m.value)}
-                    >
-                      <Text style={[styles.methodChipText, isSelected && styles.methodChipTextSelected]}>
-                        {m.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                {/* Cash */}
+                <TouchableOpacity
+                  style={[
+                    styles.methodPill,
+                    {
+                      backgroundColor:
+                        paymentMethod === 'cash'
+                          ? colors.primary
+                          : colors.surfaceSubtle,
+                      borderColor:
+                        paymentMethod === 'cash'
+                          ? colors.primary
+                          : colors.border,
+                    },
+                  ]}
+                  activeOpacity={0.75}
+                  onPress={() => setPaymentMethod('cash')}
+                >
+                  <Banknote
+                    size={15}
+                    color={paymentMethod === 'cash' ? '#FFFFFF' : colors.textPrimary}
+                  />
+                  <Text
+                    style={[
+                      styles.methodPillText,
+                      {
+                        color:
+                          paymentMethod === 'cash'
+                            ? '#FFFFFF'
+                            : colors.textPrimary,
+                        fontFamily:
+                          paymentMethod === 'cash' ? FONTS.bold : FONTS.semiBold,
+                      },
+                    ]}
+                  >
+                    Cash
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Transfer */}
+                <TouchableOpacity
+                  style={[
+                    styles.methodPill,
+                    {
+                      backgroundColor:
+                        paymentMethod === 'transfer'
+                          ? colors.paymentTransfer
+                          : colors.surfaceSubtle,
+                      borderColor:
+                        paymentMethod === 'transfer'
+                          ? colors.paymentTransfer
+                          : colors.border,
+                    },
+                  ]}
+                  activeOpacity={0.75}
+                  onPress={() => setPaymentMethod('transfer')}
+                >
+                  <Building2
+                    size={15}
+                    color={
+                      paymentMethod === 'transfer'
+                        ? '#FFFFFF'
+                        : colors.textPrimary
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.methodPillText,
+                      {
+                        color:
+                          paymentMethod === 'transfer'
+                            ? '#FFFFFF'
+                            : colors.textPrimary,
+                        fontFamily:
+                          paymentMethod === 'transfer' ? FONTS.bold : FONTS.semiBold,
+                      },
+                    ]}
+                  >
+                    Transfer
+                  </Text>
+                </TouchableOpacity>
+
+                {/* POS */}
+                <TouchableOpacity
+                  style={[
+                    styles.methodPill,
+                    {
+                      backgroundColor:
+                        paymentMethod === 'pos'
+                          ? colors.paymentPOS
+                          : colors.surfaceSubtle,
+                      borderColor:
+                        paymentMethod === 'pos'
+                          ? colors.paymentPOS
+                          : colors.border,
+                    },
+                  ]}
+                  activeOpacity={0.75}
+                  onPress={() => setPaymentMethod('pos')}
+                >
+                  <CreditCard
+                    size={15}
+                    color={paymentMethod === 'pos' ? '#FFFFFF' : colors.textPrimary}
+                  />
+                  <Text
+                    style={[
+                      styles.methodPillText,
+                      {
+                        color:
+                          paymentMethod === 'pos'
+                            ? '#FFFFFF'
+                            : colors.textPrimary,
+                        fontFamily:
+                          paymentMethod === 'pos' ? FONTS.bold : FONTS.semiBold,
+                      },
+                    ]}
+                  >
+                    POS
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
 
-            {/* Note */}
-            <View style={styles.field}>
-              <Text style={styles.label}>Note / Reference (Optional)</Text>
-              <TextInput
-                style={[styles.textInput, { height: 48 }]}
-                placeholder="e.g. Bank transfer ref / Cash handed over"
-                placeholderTextColor={COLORS.textMuted}
-                value={note}
-                onChangeText={setNote}
-              />
-            </View>
-
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-            {/* Save */}
-            <Button
-              title={`Confirm Payment (${formatNaira(numericAmount)})`}
-              onPress={handleSave}
-              style={styles.saveBtn}
+            {/* 4. FINTECH NUMPAD */}
+            <NumericKeypad
+              onKeyPress={handleKeyPress}
+              onIncrement={handleIncrement}
+              quickIncrements={[500, 1000, 2000, 5000]}
             />
+
+            {/* 5. BIG ACTION BUTTON */}
+            <TouchableOpacity
+              style={[
+                styles.saveButton,
+                {
+                  backgroundColor:
+                    numericAmount <= 0 || !currentCustomer
+                      ? colors.buttonDisabled
+                      : colors.primary,
+                  shadowOpacity: isDark || numericAmount <= 0 ? 0 : 0.2,
+                },
+              ]}
+              disabled={numericAmount <= 0 || !currentCustomer}
+              activeOpacity={0.8}
+              onPress={handleSave}
+            >
+              <Text
+                style={[
+                  styles.saveButtonText,
+                  {
+                    color:
+                      numericAmount <= 0 || !currentCustomer
+                        ? colors.buttonDisabledText
+                        : '#FFFFFF',
+                  },
+                ]}
+              >
+                {numericAmount > 0 && currentCustomer
+                  ? `Save ₦${numericAmount.toLocaleString('en-NG')} from ${currentCustomer.name}`
+                  : 'Punch in Payment Amount'}
+              </Text>
+            </TouchableOpacity>
           </ScrollView>
-        </KeyboardAvoidingView>
+        </View>
       </View>
+
+      {/* Sensory Feedback Celebration Modal */}
+      <SuccessFeedbackModal
+        visible={showSuccess}
+        onClose={handleSuccessClose}
+        title={successInfo.title}
+        amount={successInfo.amount}
+        subtitle={successInfo.subtitle}
+        type="payment"
+      />
     </Modal>
   );
 };
@@ -238,181 +565,207 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: COLORS.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '85%',
-    paddingBottom: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: '92%',
+    paddingBottom: Platform.OS === 'ios' ? 26 : 14,
   },
-  sheetHeader: {
+  dragHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
   },
-  titleRow: {
+  headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   iconCircle: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#ECFDF5',
     alignItems: 'center',
     justifyContent: 'center',
   },
   sheetTitle: {
-    ...TYPOGRAPHY.titleSmall,
-    fontSize: 18,
-    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    fontSize: 17,
+  },
+  sheetSubtitle: {
+    fontFamily: FONTS.medium,
+    fontSize: 12,
   },
   closeBtn: {
-    padding: 6,
+    width: 32,
+    height: 32,
     borderRadius: 16,
-    backgroundColor: COLORS.surfaceSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  scrollBody: {
+  scrollContent: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 12,
+    paddingBottom: 20,
   },
-  field: {
-    marginBottom: 16,
+  section: {
+    marginBottom: 10,
   },
-  label: {
-    ...TYPOGRAPHY.caption,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
+  sectionLabel: {
+    fontFamily: FONTS.bold,
+    fontSize: 11,
+    letterSpacing: 0.6,
     marginBottom: 6,
-    textTransform: 'uppercase',
   },
-  chipRow: {
+  noDebtorsBox: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+  },
+  noDebtorsText: {
+    fontFamily: FONTS.semiBold,
+    fontSize: 13,
+  },
+  chipsScroll: {
     gap: 8,
     paddingVertical: 4,
   },
   customerChip: {
-    backgroundColor: COLORS.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderWidth: 1,
   },
-  customerChipSelected: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+  avatarCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontFamily: FONTS.bold,
+    fontSize: 12,
   },
   customerChipText: {
-    ...TYPOGRAPHY.caption,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
+    fontSize: 13,
   },
-  customerChipTextSelected: {
-    color: COLORS.textInverse,
+  customerChipDebt: {
+    fontFamily: FONTS.semiBold,
+    fontSize: 11,
   },
-  debtBanner: {
+  activeDebtorBanner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 10,
   },
-  debtBannerLabel: {
-    ...TYPOGRAPHY.bodyBold,
-    color: COLORS.textPrimary,
+  activeDebtorLabel: {
+    fontFamily: FONTS.bold,
+    fontSize: 10,
+    letterSpacing: 0.5,
   },
-  debtBannerSub: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.statusUnpaid,
+  activeDebtorAmount: {
+    fontFamily: FONTS.extraBold,
+    fontSize: 18,
     marginTop: 2,
   },
-  debtBannerAmount: {
-    ...TYPOGRAPHY.titleMedium,
-    fontWeight: '800',
-    color: COLORS.statusUnpaid,
-  },
-  amountInput: {
-    borderWidth: 2,
-    borderColor: COLORS.brandAccent,
-    borderRadius: TOUCH_TARGET.borderRadius,
-    paddingHorizontal: 14,
-    height: 54,
-    fontSize: 24,
-    fontWeight: '800',
-    color: COLORS.brandAccent,
-    backgroundColor: '#F0FDF4',
-  },
-  quickPayRow: {
+  quickSettleRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
+    gap: 6,
   },
-  quickPayBtn: {
-    backgroundColor: COLORS.surfaceSubtle,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+  quickSettleBtn: {
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
-  quickPayText: {
-    ...TYPOGRAPHY.caption,
-    fontWeight: '700',
-    color: COLORS.primary,
+  quickSettleBtnText: {
+    fontFamily: FONTS.bold,
+    fontSize: 12,
+  },
+  heroAmountBox: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  nairaSymbol: {
+    fontFamily: FONTS.extraBold,
+    fontSize: 26,
+    marginRight: 4,
+  },
+  heroAmountText: {
+    fontFamily: FONTS.extraBold,
+    fontSize: 38,
+  },
+  errorBanner: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+  },
+  errorBannerText: {
+    fontFamily: FONTS.semiBold,
+    fontSize: 13,
+    textAlign: 'center',
   },
   methodRow: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 6,
   },
-  methodChip: {
+  methodPill: {
     flex: 1,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    backgroundColor: COLORS.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 8,
+    gap: 6,
   },
-  methodChipSelected: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+  methodPillText: {
+    fontSize: 12,
   },
-  methodChipText: {
-    ...TYPOGRAPHY.caption,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
+  saveButton: {
+    height: 52,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    shadowColor: '#00513F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 3,
   },
-  methodChipTextSelected: {
-    color: COLORS.textInverse,
-  },
-  textInput: {
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    borderRadius: TOUCH_TARGET.borderRadius,
-    paddingHorizontal: 14,
-    height: 50,
-    fontSize: 16,
-    color: COLORS.textPrimary,
-    backgroundColor: COLORS.surface,
-  },
-  errorText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.statusUnpaid,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  saveBtn: {
-    marginTop: 8,
+  saveButtonText: {
+    fontFamily: FONTS.bold,
+    fontSize: 15,
   },
 });

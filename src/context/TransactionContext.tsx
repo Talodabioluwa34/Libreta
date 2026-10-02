@@ -117,11 +117,11 @@ interface TransactionContextType {
   addSale: (data: {
     customerId?: string;
     customerName?: string;
-    itemName: string;
-    quantity: number;
+    itemName?: string;
+    quantity?: number;
     unitPrice: number;
-    amountPaid: number;
-    paymentMethod: PaymentMethod;
+    amountPaid?: number;
+    paymentMethod?: PaymentMethod;
     note?: string;
   }) => { success: boolean; error?: string };
   addDebt: (data: {
@@ -238,30 +238,35 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const addSale = (data: {
     customerId?: string;
     customerName?: string;
-    itemName: string;
-    quantity: number;
+    itemName?: string;
+    quantity?: number;
     unitPrice: number;
-    amountPaid: number;
-    paymentMethod: PaymentMethod;
+    amountPaid?: number;
+    paymentMethod?: PaymentMethod;
     note?: string;
   }): { success: boolean; error?: string } => {
-    const totalAmount = data.quantity * data.unitPrice;
+    const qty = data.quantity && data.quantity > 0 ? data.quantity : 1;
+    const totalAmount = qty * data.unitPrice;
     if (totalAmount <= 0) {
       return { success: false, error: 'Sale total must be greater than zero' };
     }
-    if (data.amountPaid < 0 || data.amountPaid > totalAmount) {
+    const paid = data.amountPaid !== undefined ? data.amountPaid : totalAmount;
+    if (paid < 0 || paid > totalAmount) {
       return { success: false, error: 'Amount paid cannot exceed sale total' };
     }
 
+    const method = data.paymentMethod || 'cash';
+    const resolvedItem = data.itemName?.trim() || 'General Sale';
+
     // Derive status automatically (PRD §8.4)
     let status: PaymentStatus = 'paid';
-    if (data.amountPaid === 0) {
+    if (paid === 0) {
       status = 'unpaid';
-    } else if (data.amountPaid < totalAmount) {
+    } else if (paid < totalAmount) {
       status = 'part_paid';
     }
 
-    const unpaidPortion = totalAmount - data.amountPaid;
+    const unpaidPortion = totalAmount - paid;
 
     // Customer validation: If credit/unpaid, require a customer identity
     let custId = data.customerId;
@@ -282,10 +287,10 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
       customer_id: custId,
       customer_name: custName,
       total_amount: totalAmount,
-      amount_paid: data.amountPaid,
+      amount_paid: paid,
       status,
       date: new Date().toISOString(),
-      note: `${data.quantity}x ${data.itemName}${data.note ? ' - ' + data.note : ''}`,
+      note: `${qty}x ${resolvedItem}${data.note ? ' - ' + data.note : ''}`,
       created_at: new Date().toISOString(),
     };
 
@@ -298,7 +303,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
           return {
             ...c,
             total_purchases: (c.total_purchases || 0) + totalAmount,
-            total_paid: (c.total_paid || 0) + data.amountPaid,
+            total_paid: (c.total_paid || 0) + paid,
             outstanding_balance: (c.outstanding_balance || 0) + unpaidPortion,
           };
         }

@@ -1,7 +1,8 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { COLORS, TYPOGRAPHY, FONTS } from '@/src/constants/theme';
-import { Home, ShoppingBag, AlertCircle, Users, Menu } from 'lucide-react-native';
+import { FONTS } from '@/src/constants/theme';
+import { useTheme } from '@/src/context/ThemeContext';
+import { Home, AlertCircle, Users, Menu } from 'lucide-react-native';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,31 +10,35 @@ import { useTransactions } from '@/src/context/TransactionContext';
 
 export default function TabsLayout() {
   const { summary } = useTransactions();
+  const { colors, isDark } = useTheme();
   const owingCount = summary?.customers_owing_count || 0;
   const insets = useSafeAreaInsets();
 
-  // Provide generous clearance above the device's system home navbar / gesture indicator
-  const bottomPadding = insets.bottom > 0 ? insets.bottom + 8 : (Platform.OS === 'ios' ? 28 : 22);
-  const tabHeight = 58 + bottomPadding;
+  const bottomPadding = insets.bottom > 0 ? insets.bottom + 6 : (Platform.OS === 'ios' ? 26 : 18);
+  const tabHeight = 56 + bottomPadding;
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: '#94A3B8',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: '#F1F5F9',
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
           borderTopWidth: 1,
           height: tabHeight,
           paddingBottom: bottomPadding,
           paddingTop: 8,
+          elevation: isDark ? 0 : 4,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: isDark ? 0 : 0.04,
+          shadowRadius: 6,
         },
         tabBarLabelStyle: {
           fontFamily: FONTS.bold,
           fontSize: 11,
-          fontWeight: '700',
           marginTop: 2,
         },
       }}
@@ -60,11 +65,10 @@ export default function TabsLayout() {
           tabBarIcon: ({ color }) => <AlertCircle size={22} color={color} strokeWidth={2.2} />,
           tabBarBadge: owingCount > 0 ? owingCount : undefined,
           tabBarBadgeStyle: {
-            backgroundColor: '#DC2626',
+            backgroundColor: colors.statusUnpaid,
             color: '#FFFFFF',
             fontFamily: FONTS.extraBold,
             fontSize: 10,
-            fontWeight: '800',
             lineHeight: 14,
             height: 16,
             minWidth: 16,

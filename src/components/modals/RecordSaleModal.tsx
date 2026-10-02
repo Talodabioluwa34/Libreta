@@ -3,293 +3,659 @@ import {
   Modal,
   View,
   Text,
-  TextInput,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  KeyboardAvoidingView,
+  TextInput,
   Platform,
 } from 'react-native';
 import { useTransactions } from '@/src/context/TransactionContext';
-import { COLORS, formatNaira, TOUCH_TARGET, TYPOGRAPHY } from '@/src/constants/theme';
-import { Button } from '@/src/components/ui/Button';
-import { Badge } from '@/src/components/ui/Badge';
-import { PaymentMethod, PaymentStatus } from '@/src/types';
-import { X, User, ShoppingBag, Plus, Minus } from 'lucide-react-native';
+import { FONTS, formatNaira } from '@/src/constants/theme';
+import { useTheme } from '@/src/context/ThemeContext';
+import { NumericKeypad } from '@/src/components/ui/NumericKeypad';
+import { SuccessFeedbackModal } from '@/src/components/ui/SuccessFeedbackModal';
+import { PaymentMethod } from '@/src/types';
+import {
+  X,
+  ShoppingBag,
+  Banknote,
+  Building2,
+  CreditCard,
+  Clock,
+  Check,
+} from 'lucide-react-native';
 
 interface RecordSaleModalProps {
   visible: boolean;
   onClose: () => void;
 }
 
-const PAYMENT_METHODS: { label: string; value: PaymentMethod }[] = [
-  { label: 'Cash', value: 'cash' },
-  { label: 'Transfer', value: 'transfer' },
-  { label: 'POS', value: 'pos' },
-  { label: 'Other', value: 'other' },
+const COMMON_CATEGORIES = [
+  'General Sale',
+  'Drinks',
+  'Foodstuff',
+  'Provisions',
+  'Bakery / Bread',
+  'Stock / Goods',
 ];
 
 export const RecordSaleModal: React.FC<RecordSaleModalProps> = ({ visible, onClose }) => {
   const { customers, addSale } = useTransactions();
+  const { colors, isDark } = useTheme();
+
+  const [amountStr, setAmountStr] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('General Sale');
+  const [customItemName, setCustomItemName] = useState<string>('');
+  const [showCustomInput, setShowCustomInput] = useState<boolean>(false);
+
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const [isCreditSale, setIsCreditSale] = useState<boolean>(false);
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [walkInName, setWalkInName] = useState<string>('');
-  const [itemName, setItemName] = useState<string>('');
-  const [quantity, setQuantity] = useState<number>(1);
-  const [unitPrice, setUnitPrice] = useState<string>('');
-  const [amountPaid, setAmountPaid] = useState<string>('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
-  const [note, setNote] = useState<string>('');
   const [error, setError] = useState<string>('');
 
-  const numericPrice = parseInt(unitPrice.replace(/[^0-9]/g, '') || '0', 10);
-  const totalAmount = quantity * numericPrice;
-  const numericPaid = amountPaid === '' ? totalAmount : parseInt(amountPaid.replace(/[^0-9]/g, '') || '0', 10);
+  // Success Feedback
+  const [showSuccess, setShowSuccess] = useState<boolean>(false);
+  const [successInfo, setSuccessInfo] = useState<{ amount: number; title: string; subtitle: string }>({
+    amount: 0,
+    title: '',
+    subtitle: '',
+  });
 
-  // Derived payment status (PRD §8.4)
-  let status: PaymentStatus = 'paid';
-  if (numericPaid === 0) {
-    status = 'unpaid';
-  } else if (numericPaid < totalAmount) {
-    status = 'part_paid';
-  }
+  const numericAmount = parseInt(amountStr || '0', 10);
 
-  const handleFullPay = () => {
-    setAmountPaid(totalAmount.toString());
+  // Keypad Handlers
+  const handleKeyPress = (key: string) => {
+    setError('');
+    if (key === 'clear') {
+      setAmountStr('');
+      return;
+    }
+    if (key === 'backspace') {
+      setAmountStr((prev) => (prev.length > 1 ? prev.slice(0, -1) : ''));
+      return;
+    }
+    if (key === '00') {
+      if (!amountStr || amountStr === '0') return;
+      if (amountStr.length >= 8) return;
+      setAmountStr((prev) => prev + '00');
+      return;
+    }
+    if (amountStr.length >= 8) return;
+    if (amountStr === '' && key === '0') return;
+    setAmountStr((prev) => prev + key);
   };
 
-  const handleZeroPay = () => {
-    setAmountPaid('0');
+  const handleIncrement = (delta: number) => {
+    setError('');
+    const current = parseInt(amountStr || '0', 10);
+    const updated = current + delta;
+    if (updated <= 99999999) {
+      setAmountStr(updated.toString());
+    }
   };
 
   const handleSave = () => {
-    if (!itemName.trim()) {
-      setError('Please enter the item or product name');
+    if (numericAmount <= 0) {
+      setError('Please punch in the sale amount');
       return;
     }
-    if (numericPrice <= 0) {
-      setError('Please enter a valid unit price');
+
+    if (isCreditSale && !selectedCustomerId && !walkInName.trim()) {
+      setError('Please select who took the goods on credit');
       return;
     }
+
+    const itemName = showCustomInput && customItemName.trim()
+      ? customItemName.trim()
+      : selectedCategory;
 
     const customerName = selectedCustomerId
       ? customers.find((c) => c.id === selectedCustomerId)?.name
       : walkInName.trim() || 'Walk-in Cash Customer';
 
+    const amountPaid = isCreditSale ? 0 : numericAmount;
+
     const res = addSale({
       customerId: selectedCustomerId || undefined,
       customerName,
-      itemName: itemName.trim(),
-      quantity,
-      unitPrice: numericPrice,
-      amountPaid: numericPaid,
+      itemName,
+      quantity: 1,
+      unitPrice: numericAmount,
+      amountPaid,
       paymentMethod,
-      note: note.trim() || undefined,
     });
 
     if (res.success) {
-      resetForm();
-      onClose();
+      setSuccessInfo({
+        amount: numericAmount,
+        title: isCreditSale ? 'Credit Recorded!' : 'Sale Recorded!',
+        subtitle: isCreditSale
+          ? `${customerName} owes ${formatNaira(numericAmount)}`
+          : `Recorded via ${paymentMethod.toUpperCase()}`,
+      });
+      setShowSuccess(true);
     } else {
       setError(res.error || 'Failed to record sale');
     }
   };
 
+  const handleSuccessClose = () => {
+    setShowSuccess(false);
+    resetForm();
+    onClose();
+  };
+
   const resetForm = () => {
+    setAmountStr('');
+    setSelectedCategory('General Sale');
+    setCustomItemName('');
+    setShowCustomInput(false);
+    setPaymentMethod('cash');
+    setIsCreditSale(false);
     setSelectedCustomerId('');
     setWalkInName('');
-    setItemName('');
-    setQuantity(1);
-    setUnitPrice('');
-    setAmountPaid('');
-    setPaymentMethod('cash');
-    setNote('');
     setError('');
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
-      <View style={styles.overlay}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.sheet}
-        >
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
+        <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
+          {/* Grab handle */}
+          <View style={[styles.dragHandle, { backgroundColor: colors.border }]} />
+
           {/* Header */}
-          <View style={styles.sheetHeader}>
-            <View style={styles.titleRow}>
-              <View style={styles.iconCircle}>
-                <ShoppingBag size={20} color={COLORS.brandAccent} />
+          <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
+            <View style={styles.headerTitleRow}>
+              <View style={[styles.iconCircle, { backgroundColor: colors.primarySurface }]}>
+                <ShoppingBag size={18} color={colors.primary} />
               </View>
-              <Text style={styles.sheetTitle}>Record New Sale</Text>
+              <View>
+                <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>Record Sale</Text>
+                <Text style={[styles.sheetSubtitle, { color: colors.textMuted }]}>
+                  Punch amount like POS
+                </Text>
+              </View>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <X size={20} color={COLORS.textSecondary} />
+            <TouchableOpacity
+              onPress={onClose}
+              style={[styles.closeBtn, { backgroundColor: colors.surfaceSubtle }]}
+              activeOpacity={0.7}
+            >
+              <X size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
-            {/* Customer Selector (Optional for Cash) */}
-            <View style={styles.field}>
-              <Text style={styles.label}>Customer (Optional for cash sales)</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            bounces={false}
+          >
+            {/* 1. HERO AMOUNT DISPLAY */}
+            <View
+              style={[
+                styles.heroAmountBox,
+                {
+                  backgroundColor: colors.surfaceSubtle,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.nairaSymbol, { color: colors.primary }]}>₦</Text>
+              <Text
+                style={[
+                  styles.heroAmountText,
+                  { color: colors.textPrimary },
+                  !amountStr && { color: colors.textMuted },
+                ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {numericAmount > 0 ? numericAmount.toLocaleString('en-NG') : '0'}
+              </Text>
+            </View>
+
+            {/* Error Banner */}
+            {error ? (
+              <View
+                style={[
+                  styles.errorBanner,
+                  {
+                    backgroundColor: colors.statusUnpaidBg,
+                    borderColor: colors.statusUnpaid,
+                  },
+                ]}
+              >
+                <Text style={[styles.errorBannerText, { color: colors.statusUnpaid }]}>
+                  {error}
+                </Text>
+              </View>
+            ) : null}
+
+            {/* 2. PAYMENT TYPE (CLEAN LUCIDE ICONS, NO EMOJIS!) */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>PAYMENT METHOD</Text>
+              <View style={styles.methodRow}>
+                {/* Cash */}
                 <TouchableOpacity
-                  style={[styles.customerChip, !selectedCustomerId && styles.customerChipSelected]}
-                  onPress={() => setSelectedCustomerId('')}
+                  style={[
+                    styles.methodPill,
+                    {
+                      backgroundColor:
+                        !isCreditSale && paymentMethod === 'cash'
+                          ? colors.primary
+                          : colors.surfaceSubtle,
+                      borderColor:
+                        !isCreditSale && paymentMethod === 'cash'
+                          ? colors.primary
+                          : colors.border,
+                    },
+                  ]}
+                  activeOpacity={0.75}
+                  onPress={() => {
+                    setIsCreditSale(false);
+                    setPaymentMethod('cash');
+                  }}
                 >
-                  <User size={14} color={!selectedCustomerId ? COLORS.textInverse : COLORS.textSecondary} />
-                  <Text style={[styles.customerChipText, !selectedCustomerId && styles.customerChipTextSelected]}>
-                    Walk-in Cash
+                  <Banknote
+                    size={15}
+                    color={
+                      !isCreditSale && paymentMethod === 'cash'
+                        ? '#FFFFFF'
+                        : colors.textPrimary
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.methodPillText,
+                      {
+                        color:
+                          !isCreditSale && paymentMethod === 'cash'
+                            ? '#FFFFFF'
+                            : colors.textPrimary,
+                        fontFamily:
+                          !isCreditSale && paymentMethod === 'cash'
+                            ? FONTS.bold
+                            : FONTS.semiBold,
+                      },
+                    ]}
+                  >
+                    Cash
                   </Text>
                 </TouchableOpacity>
 
-                {customers.map((c) => {
-                  const isSelected = selectedCustomerId === c.id;
-                  return (
-                    <TouchableOpacity
-                      key={c.id}
-                      style={[styles.customerChip, isSelected && styles.customerChipSelected]}
-                      onPress={() => setSelectedCustomerId(c.id)}
-                    >
-                      <Text style={[styles.customerChipText, isSelected && styles.customerChipTextSelected]}>
-                        {c.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-
-            {/* Item Name */}
-            <View style={styles.field}>
-              <Text style={styles.label}>Item / Product Sold</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="e.g. 50kg Rice, Cooking Oil, Lace fabric"
-                placeholderTextColor={COLORS.textMuted}
-                value={itemName}
-                onChangeText={(t) => { setItemName(t); setError(''); }}
-              />
-            </View>
-
-            {/* Quantity and Unit Price Row */}
-            <View style={styles.row}>
-              <View style={[styles.field, { width: '40%' }]}>
-                <Text style={styles.label}>Quantity</Text>
-                <View style={styles.qtyBox}>
-                  <TouchableOpacity
-                    style={styles.qtyBtn}
-                    onPress={() => setQuantity((q) => Math.max(1, q - 1))}
-                  >
-                    <Minus size={18} color={COLORS.textPrimary} />
-                  </TouchableOpacity>
-                  <Text style={styles.qtyText}>{quantity}</Text>
-                  <TouchableOpacity
-                    style={styles.qtyBtn}
-                    onPress={() => setQuantity((q) => q + 1)}
-                  >
-                    <Plus size={18} color={COLORS.textPrimary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={[styles.field, { flex: 1, marginLeft: 12 }]}>
-                <Text style={styles.label}>Unit Price (₦)</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="₦0"
-                  placeholderTextColor={COLORS.textMuted}
-                  keyboardType="numeric"
-                  value={unitPrice ? parseInt(unitPrice, 10).toLocaleString('en-NG') : ''}
-                  onChangeText={(t) => {
-                    const clean = t.replace(/[^0-9]/g, '');
-                    setUnitPrice(clean);
-                    setError('');
+                {/* Transfer */}
+                <TouchableOpacity
+                  style={[
+                    styles.methodPill,
+                    {
+                      backgroundColor:
+                        !isCreditSale && paymentMethod === 'transfer'
+                          ? colors.paymentTransfer
+                          : colors.surfaceSubtle,
+                      borderColor:
+                        !isCreditSale && paymentMethod === 'transfer'
+                          ? colors.paymentTransfer
+                          : colors.border,
+                    },
+                  ]}
+                  activeOpacity={0.75}
+                  onPress={() => {
+                    setIsCreditSale(false);
+                    setPaymentMethod('transfer');
                   }}
+                >
+                  <Building2
+                    size={15}
+                    color={
+                      !isCreditSale && paymentMethod === 'transfer'
+                        ? '#FFFFFF'
+                        : colors.textPrimary
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.methodPillText,
+                      {
+                        color:
+                          !isCreditSale && paymentMethod === 'transfer'
+                            ? '#FFFFFF'
+                            : colors.textPrimary,
+                        fontFamily:
+                          !isCreditSale && paymentMethod === 'transfer'
+                            ? FONTS.bold
+                            : FONTS.semiBold,
+                      },
+                    ]}
+                  >
+                    Transfer
+                  </Text>
+                </TouchableOpacity>
+
+                {/* POS */}
+                <TouchableOpacity
+                  style={[
+                    styles.methodPill,
+                    {
+                      backgroundColor:
+                        !isCreditSale && paymentMethod === 'pos'
+                          ? colors.paymentPOS
+                          : colors.surfaceSubtle,
+                      borderColor:
+                        !isCreditSale && paymentMethod === 'pos'
+                          ? colors.paymentPOS
+                          : colors.border,
+                    },
+                  ]}
+                  activeOpacity={0.75}
+                  onPress={() => {
+                    setIsCreditSale(false);
+                    setPaymentMethod('pos');
+                  }}
+                >
+                  <CreditCard
+                    size={15}
+                    color={
+                      !isCreditSale && paymentMethod === 'pos'
+                        ? '#FFFFFF'
+                        : colors.textPrimary
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.methodPillText,
+                      {
+                        color:
+                          !isCreditSale && paymentMethod === 'pos'
+                            ? '#FFFFFF'
+                            : colors.textPrimary,
+                        fontFamily:
+                          !isCreditSale && paymentMethod === 'pos'
+                            ? FONTS.bold
+                            : FONTS.semiBold,
+                      },
+                    ]}
+                  >
+                    POS
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Credit / Owes */}
+                <TouchableOpacity
+                  style={[
+                    styles.methodPill,
+                    {
+                      backgroundColor: isCreditSale
+                        ? colors.statusUnpaid
+                        : colors.surfaceSubtle,
+                      borderColor: isCreditSale
+                        ? colors.statusUnpaid
+                        : colors.border,
+                    },
+                  ]}
+                  activeOpacity={0.75}
+                  onPress={() => {
+                    setIsCreditSale(true);
+                  }}
+                >
+                  <Clock
+                    size={15}
+                    color={isCreditSale ? '#FFFFFF' : colors.statusUnpaid}
+                  />
+                  <Text
+                    style={[
+                      styles.methodPillText,
+                      {
+                        color: isCreditSale ? '#FFFFFF' : colors.statusUnpaid,
+                        fontFamily: isCreditSale ? FONTS.bold : FONTS.semiBold,
+                      },
+                    ]}
+                  >
+                    Owes
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* 3. CUSTOMER SELECTOR (If Credit or debtor selected) */}
+            {isCreditSale || selectedCustomerId ? (
+              <View
+                style={[
+                  styles.section,
+                  styles.creditHighlightBox,
+                  {
+                    backgroundColor: colors.debtSurface,
+                    borderColor: colors.debtBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.sectionLabel, { color: colors.debtText }]}>
+                  {isCreditSale
+                    ? 'WHO TOOK THIS GOODS ON CREDIT? (REQUIRED)'
+                    : 'CUSTOMER (OPTIONAL)'}
+                </Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chipsScroll}
+                >
+                  {customers.map((c) => {
+                    const isSelected = selectedCustomerId === c.id;
+                    return (
+                      <TouchableOpacity
+                        key={c.id}
+                        style={[
+                          styles.customerChip,
+                          {
+                            backgroundColor: isSelected
+                              ? colors.primary
+                              : colors.surface,
+                            borderColor: isSelected ? colors.primary : colors.border,
+                          },
+                        ]}
+                        onPress={() => {
+                          setSelectedCustomerId(c.id);
+                          setWalkInName('');
+                        }}
+                      >
+                        <View
+                          style={[
+                            styles.avatarCircle,
+                            {
+                              backgroundColor: isSelected
+                                ? '#FFFFFF'
+                                : colors.surfaceSubtle,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.avatarText,
+                              {
+                                color: isSelected
+                                  ? colors.primary
+                                  : colors.textPrimary,
+                              },
+                            ]}
+                          >
+                            {c.name[0]?.toUpperCase() || 'C'}
+                          </Text>
+                        </View>
+                        <Text
+                          style={[
+                            styles.customerChipText,
+                            {
+                              color: isSelected
+                                ? '#FFFFFF'
+                                : colors.textPrimary,
+                              fontFamily: isSelected ? FONTS.bold : FONTS.medium,
+                            },
+                          ]}
+                        >
+                          {c.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                {/* Manual Name Input if new debtor */}
+                {!selectedCustomerId && (
+                  <TextInput
+                    style={[
+                      styles.nameInput,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                        color: colors.textPrimary,
+                      },
+                    ]}
+                    placeholder="Or type customer name (e.g. Mama Funke)"
+                    placeholderTextColor={colors.textMuted}
+                    value={walkInName}
+                    onChangeText={(t) => {
+                      setWalkInName(t);
+                      setError('');
+                    }}
+                  />
+                )}
+              </View>
+            ) : null}
+
+            {/* 4. FAST 1-TAP CATEGORIES */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
+                  ITEM / CATEGORY
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowCustomInput(!showCustomInput)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.customToggleText, { color: colors.primary }]}>
+                    {showCustomInput ? '✕ Quick chips' : '+ Type specific item'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {!showCustomInput ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chipsScroll}
+                >
+                  {COMMON_CATEGORIES.map((cat) => {
+                    const isSelected = selectedCategory === cat;
+                    return (
+                      <TouchableOpacity
+                        key={cat}
+                        style={[
+                          styles.categoryChip,
+                          {
+                            backgroundColor: isSelected
+                              ? colors.primarySurface
+                              : colors.surfaceSubtle,
+                            borderColor: isSelected
+                              ? colors.primary
+                              : colors.border,
+                          },
+                        ]}
+                        onPress={() => setSelectedCategory(cat)}
+                      >
+                        <Text
+                          style={[
+                            styles.categoryChipText,
+                            {
+                              color: isSelected
+                                ? colors.primary
+                                : colors.textSecondary,
+                              fontFamily: isSelected ? FONTS.bold : FONTS.medium,
+                            },
+                          ]}
+                        >
+                          {cat}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              ) : (
+                <TextInput
+                  style={[
+                    styles.customItemInput,
+                    {
+                      backgroundColor: colors.surfaceSubtle,
+                      borderColor: colors.border,
+                      color: colors.textPrimary,
+                    },
+                  ]}
+                  placeholder="e.g. 50kg Mama Gold Rice, Eggs"
+                  placeholderTextColor={colors.textMuted}
+                  value={customItemName}
+                  onChangeText={setCustomItemName}
+                  autoFocus
                 />
-              </View>
+              )}
             </View>
 
-            {/* Auto-Calculated Total Hero */}
-            <View style={styles.totalHero}>
-              <Text style={styles.totalHeroLabel}>Total Sale Amount</Text>
-              <Text style={styles.totalHeroAmount}>{formatNaira(totalAmount)}</Text>
-            </View>
-
-            {/* Amount Paid & Status Derivation */}
-            <View style={styles.field}>
-              <View style={styles.paidHeaderRow}>
-                <Text style={styles.label}>Amount Paid by Customer</Text>
-                <Badge status={status} />
-              </View>
-
-              <TextInput
-                style={styles.paidInput}
-                placeholder={formatNaira(totalAmount)}
-                placeholderTextColor={COLORS.textMuted}
-                keyboardType="numeric"
-                value={amountPaid ? parseInt(amountPaid, 10).toLocaleString('en-NG') : ''}
-                onChangeText={(t) => {
-                  const clean = t.replace(/[^0-9]/g, '');
-                  setAmountPaid(clean);
-                  setError('');
-                }}
-              />
-
-              {/* Quick Status Buttons */}
-              <View style={styles.quickPayRow}>
-                <TouchableOpacity style={styles.quickPayBtn} onPress={handleFullPay}>
-                  <Text style={styles.quickPayText}>Paid in Full</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.quickPayBtn} onPress={handleZeroPay}>
-                  <Text style={[styles.quickPayText, { color: COLORS.statusUnpaid }]}>Credit (Unpaid)</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Payment Method */}
-            <View style={styles.field}>
-              <Text style={styles.label}>Payment Method</Text>
-              <View style={styles.methodRow}>
-                {PAYMENT_METHODS.map((m) => {
-                  const isSelected = paymentMethod === m.value;
-                  return (
-                    <TouchableOpacity
-                      key={m.value}
-                      style={[styles.methodChip, isSelected && styles.methodChipSelected]}
-                      onPress={() => setPaymentMethod(m.value)}
-                    >
-                      <Text style={[styles.methodChipText, isSelected && styles.methodChipTextSelected]}>
-                        {m.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Note */}
-            <View style={styles.field}>
-              <Text style={styles.label}>Note (Optional)</Text>
-              <TextInput
-                style={[styles.textInput, { height: 44 }]}
-                placeholder="Optional customer note..."
-                placeholderTextColor={COLORS.textMuted}
-                value={note}
-                onChangeText={setNote}
-              />
-            </View>
-
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-            {/* Submit */}
-            <Button
-              title={`Save Sale (${formatNaira(totalAmount)})`}
-              onPress={handleSave}
-              style={styles.saveBtn}
+            {/* 5. FINTECH NUMPAD */}
+            <NumericKeypad
+              onKeyPress={handleKeyPress}
+              onIncrement={handleIncrement}
+              quickIncrements={[500, 1000, 2000, 5000]}
             />
+
+            {/* 6. BIG DESIGN-SYSTEM ACTION BUTTON */}
+            <TouchableOpacity
+              style={[
+                styles.saveButton,
+                {
+                  backgroundColor:
+                    numericAmount <= 0
+                      ? colors.buttonDisabled
+                      : isCreditSale
+                      ? colors.statusUnpaid
+                      : colors.primary,
+                  shadowOpacity: isDark || numericAmount <= 0 ? 0 : 0.2,
+                },
+              ]}
+              disabled={numericAmount <= 0}
+              activeOpacity={0.8}
+              onPress={handleSave}
+            >
+              <Text
+                style={[
+                  styles.saveButtonText,
+                  {
+                    color:
+                      numericAmount <= 0
+                        ? colors.buttonDisabledText
+                        : '#FFFFFF',
+                  },
+                ]}
+              >
+                {numericAmount > 0
+                  ? isCreditSale
+                    ? `Record ₦${numericAmount.toLocaleString('en-NG')} Credit (Owes)`
+                    : `Record ₦${numericAmount.toLocaleString('en-NG')} ${paymentMethod.toUpperCase()} Sale`
+                  : 'Punch in Amount'}
+              </Text>
+            </TouchableOpacity>
           </ScrollView>
-        </KeyboardAvoidingView>
+        </View>
       </View>
+
+      {/* Sensory Feedback Celebration Modal */}
+      <SuccessFeedbackModal
+        visible={showSuccess}
+        onClose={handleSuccessClose}
+        title={successInfo.title}
+        amount={successInfo.amount}
+        subtitle={successInfo.subtitle}
+        type={isCreditSale ? 'debt' : 'sale'}
+      />
     </Modal>
   );
 };
@@ -297,63 +663,136 @@ export const RecordSaleModal: React.FC<RecordSaleModalProps> = ({ visible, onClo
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: COLORS.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '90%',
-    paddingBottom: 20,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: '92%',
+    paddingBottom: Platform.OS === 'ios' ? 26 : 14,
   },
-  sheetHeader: {
+  dragHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
   },
-  titleRow: {
+  headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   iconCircle: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: COLORS.surfaceSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sheetTitle: {
-    ...TYPOGRAPHY.titleSmall,
-    fontSize: 18,
-    fontWeight: '700',
+    fontFamily: FONTS.bold,
+    fontSize: 17,
+  },
+  sheetSubtitle: {
+    fontFamily: FONTS.medium,
+    fontSize: 12,
   },
   closeBtn: {
-    padding: 6,
+    width: 32,
+    height: 32,
     borderRadius: 16,
-    backgroundColor: COLORS.surfaceSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  scrollBody: {
+  scrollContent: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 12,
+    paddingBottom: 20,
   },
-  field: {
-    marginBottom: 16,
+  heroAmountBox: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    marginBottom: 10,
   },
-  label: {
-    ...TYPOGRAPHY.caption,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
+  nairaSymbol: {
+    fontFamily: FONTS.extraBold,
+    fontSize: 26,
+    marginRight: 4,
+  },
+  heroAmountText: {
+    fontFamily: FONTS.extraBold,
+    fontSize: 38,
+  },
+  errorBanner: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+  },
+  errorBannerText: {
+    fontFamily: FONTS.semiBold,
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  section: {
+    marginBottom: 10,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 6,
-    textTransform: 'uppercase',
   },
-  chipRow: {
+  sectionLabel: {
+    fontFamily: FONTS.bold,
+    fontSize: 11,
+    letterSpacing: 0.6,
+  },
+  customToggleText: {
+    fontFamily: FONTS.semiBold,
+    fontSize: 12,
+  },
+  methodRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
+  },
+  methodPill: {
+    flex: 1,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  methodPillText: {
+    fontSize: 12,
+  },
+  creditHighlightBox: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 10,
+    marginTop: 4,
+  },
+  chipsScroll: {
     gap: 8,
     paddingVertical: 4,
   },
@@ -361,142 +800,65 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: COLORS.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  customerChipSelected: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  customerChipText: {
-    ...TYPOGRAPHY.caption,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  customerChipTextSelected: {
-    color: COLORS.textInverse,
-  },
-  textInput: {
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    borderRadius: TOUCH_TARGET.borderRadius,
-    paddingHorizontal: 14,
-    height: 50,
-    fontSize: 16,
-    color: COLORS.textPrimary,
-    backgroundColor: COLORS.surface,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  qtyBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    borderRadius: TOUCH_TARGET.borderRadius,
-    height: 50,
-    paddingHorizontal: 6,
-  },
-  qtyBtn: {
-    padding: 8,
-  },
-  qtyText: {
-    ...TYPOGRAPHY.bodyBold,
-    fontSize: 18,
-  },
-  totalHero: {
-    backgroundColor: COLORS.surfaceSubtle,
-    borderRadius: 12,
-    padding: 14,
-    alignItems: 'center',
-    marginVertical: 6,
-  },
-  totalHeroLabel: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
-    fontWeight: '600',
-  },
-  totalHeroAmount: {
-    ...TYPOGRAPHY.amountDisplay,
-    fontSize: 26,
-    color: COLORS.primary,
-    marginTop: 2,
-  },
-  paidHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  paidInput: {
-    borderWidth: 2,
-    borderColor: COLORS.brandAccent,
-    borderRadius: TOUCH_TARGET.borderRadius,
-    paddingHorizontal: 14,
-    height: 52,
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.primary,
-    backgroundColor: '#F0FDF4',
-  },
-  quickPayRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  quickPayBtn: {
-    backgroundColor: COLORS.surfaceSubtle,
+    borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 6,
     borderWidth: 1,
-    borderColor: COLORS.border,
   },
-  quickPayText: {
-    ...TYPOGRAPHY.caption,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  methodRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  methodChip: {
-    flex: 1,
+  avatarCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    backgroundColor: COLORS.surfaceSubtle,
+  },
+  avatarText: {
+    fontFamily: FONTS.bold,
+    fontSize: 11,
+  },
+  customerChipText: {
+    fontSize: 13,
+  },
+  nameInput: {
+    height: 40,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 8,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    fontFamily: FONTS.medium,
+    fontSize: 13,
+    marginTop: 8,
   },
-  methodChipSelected: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+  categoryChip: {
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderWidth: 1,
   },
-  methodChipText: {
-    ...TYPOGRAPHY.caption,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
+  categoryChipText: {
+    fontSize: 13,
   },
-  methodChipTextSelected: {
-    color: COLORS.textInverse,
+  customItemInput: {
+    height: 42,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    fontFamily: FONTS.medium,
+    fontSize: 14,
+    marginTop: 4,
   },
-  errorText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.statusUnpaid,
-    textAlign: 'center',
-    marginBottom: 8,
+  saveButton: {
+    height: 52,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    shadowColor: '#00513F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 3,
   },
-  saveBtn: {
-    marginTop: 6,
+  saveButtonText: {
+    fontFamily: FONTS.bold,
+    fontSize: 15,
   },
 });

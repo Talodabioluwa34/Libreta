@@ -9,7 +9,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/context/AuthContext';
-import { COLORS, formatNaira, TYPOGRAPHY } from '@/src/constants/theme';
+import { useTheme } from '@/src/context/ThemeContext';
+import { FONTS } from '@/src/constants/theme';
 import {
   Receipt,
   Store,
@@ -19,10 +20,14 @@ import {
   ChevronRight,
   Shield,
   Smartphone,
+  Sun,
+  Moon,
+  Laptop,
 } from 'lucide-react-native';
 
 export default function MoreScreen() {
   const { user, business, updateBusinessMode, logout } = useAuth();
+  const { colors, isDark, themeMode, setThemeMode } = useTheme();
 
   const handleToggleMode = () => {
     const nextMode = business?.mode === 'full' ? 'debt_only' : 'full';
@@ -49,118 +54,302 @@ export default function MoreScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.title}>More</Text>
-          <Text style={styles.subtitle}>Settings, expenses, and business options</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>More</Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+            Settings, expenses, and business options
+          </Text>
         </View>
 
         {/* Business Profile Card */}
-        <View style={styles.profileCard}>
-          <View style={styles.profileIconCircle}>
-            <Store size={28} color={COLORS.brandAccent} />
+        <View
+          style={[
+            styles.profileCard,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <View style={[styles.profileIconCircle, { backgroundColor: colors.primarySurface }]}>
+            <Store size={26} color={colors.primary} />
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.businessName}>{business?.name || 'My Shop'}</Text>
-            <Text style={styles.ownerName}>
+            <Text style={[styles.businessName, { color: colors.textPrimary }]}>
+              {business?.name || 'My Shop'}
+            </Text>
+            <Text style={[styles.ownerName, { color: colors.textSecondary }]}>
               Owner: {user?.name || 'Vendor'} • {business?.business_type || 'General Trading'}
             </Text>
-            <Text style={styles.phoneText}>Phone: {user?.phone || 'Not set'}</Text>
+            <Text style={[styles.phoneText, { color: colors.textMuted }]}>
+              Phone: {user?.phone || 'Not set'}
+            </Text>
+          </View>
+        </View>
+
+        {/* =========================================================================
+            THEME & APPEARANCE (Light, Dark, System)
+        ========================================================================= */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>APPEARANCE</Text>
+          <View
+            style={[
+              styles.themeSelectorCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            {/* Light */}
+            <TouchableOpacity
+              style={[
+                styles.themeOptionBtn,
+                themeMode === 'light' && [
+                  styles.themeOptionBtnActive,
+                  { backgroundColor: colors.primarySurface, borderColor: colors.primary },
+                ],
+              ]}
+              activeOpacity={0.75}
+              onPress={() => setThemeMode('light')}
+            >
+              <Sun
+                size={18}
+                color={themeMode === 'light' ? colors.primary : colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.themeOptionText,
+                  {
+                    color: themeMode === 'light' ? colors.primary : colors.textSecondary,
+                    fontFamily: themeMode === 'light' ? FONTS.bold : FONTS.medium,
+                  },
+                ]}
+              >
+                Light
+              </Text>
+            </TouchableOpacity>
+
+            {/* Dark */}
+            <TouchableOpacity
+              style={[
+                styles.themeOptionBtn,
+                themeMode === 'dark' && [
+                  styles.themeOptionBtnActive,
+                  { backgroundColor: colors.primarySurface, borderColor: colors.primary },
+                ],
+              ]}
+              activeOpacity={0.75}
+              onPress={() => setThemeMode('dark')}
+            >
+              <Moon
+                size={18}
+                color={themeMode === 'dark' ? colors.primary : colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.themeOptionText,
+                  {
+                    color: themeMode === 'dark' ? colors.primary : colors.textSecondary,
+                    fontFamily: themeMode === 'dark' ? FONTS.bold : FONTS.medium,
+                  },
+                ]}
+              >
+                Dark
+              </Text>
+            </TouchableOpacity>
+
+            {/* System */}
+            <TouchableOpacity
+              style={[
+                styles.themeOptionBtn,
+                themeMode === 'system' && [
+                  styles.themeOptionBtnActive,
+                  { backgroundColor: colors.primarySurface, borderColor: colors.primary },
+                ],
+              ]}
+              activeOpacity={0.75}
+              onPress={() => setThemeMode('system')}
+            >
+              <Laptop
+                size={18}
+                color={themeMode === 'system' ? colors.primary : colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.themeOptionText,
+                  {
+                    color: themeMode === 'system' ? colors.primary : colors.textSecondary,
+                    fontFamily: themeMode === 'system' ? FONTS.bold : FONTS.medium,
+                  },
+                ]}
+              >
+                System
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
         {/* Mode Switcher Banner (PRD §8.16) */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>App Workflow Mode</Text>
+          <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>
+            APP WORKFLOW MODE
+          </Text>
           <TouchableOpacity
-            style={styles.modeCard}
+            style={[
+              styles.modeCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
             activeOpacity={0.8}
             onPress={handleToggleMode}
           >
             <View style={styles.menuItemLeft}>
-              <Layers size={22} color={COLORS.primary} />
-              <View>
-                <Text style={styles.menuItemTitle}>
+              <Layers size={22} color={colors.primary} />
+              <View style={styles.modeTextCol}>
+                <Text style={[styles.menuItemTitle, { color: colors.textPrimary }]}>
                   Current: {business?.mode === 'debt_only' ? '⚡ Debt-Only Mode' : '📘 Full Book'}
                 </Text>
-                <Text style={styles.menuItemSubtitle}>
+                <Text style={[styles.menuItemSubtitle, { color: colors.textMuted }]}>
                   {business?.mode === 'debt_only'
                     ? 'Leads with Owes. Tap to switch to Full Book (Sales + Expenses)'
                     : 'Leads with Sales. Tap to switch to lighter Debt-Only Mode'}
                 </Text>
               </View>
             </View>
-            <ChevronRight size={18} color={COLORS.textMuted} />
+            <ChevronRight size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
         {/* Features & Expenses (PRD §8.9) */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>Business Tracking</Text>
+          <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>
+            BUSINESS TRACKING
+          </Text>
 
-          <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={[
+              styles.menuItem,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+            activeOpacity={0.7}
+          >
             <View style={styles.menuItemLeft}>
-              <Receipt size={20} color={COLORS.statusPartPaid} />
+              <Receipt size={20} color={colors.statusPartPaid} />
               <View>
-                <Text style={styles.menuItemTitle}>Expenses Book</Text>
-                <Text style={styles.menuItemSubtitle}>
-                  Track Stock Restocking vs. Running costs (Rent, Fuel, Transport)
+                <Text style={[styles.menuItemTitle, { color: colors.textPrimary }]}>
+                  Expenses Book
+                </Text>
+                <Text style={[styles.menuItemSubtitle, { color: colors.textMuted }]}>
+                  Track Stock Restocking vs. Running costs
                 </Text>
               </View>
             </View>
-            <ChevronRight size={18} color={COLORS.textMuted} />
+            <ChevronRight size={18} color={colors.textMuted} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={[
+              styles.menuItem,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+            activeOpacity={0.7}
+          >
             <View style={styles.menuItemLeft}>
-              <Smartphone size={20} color={COLORS.brandAccent} />
+              <Smartphone size={20} color={colors.primary} />
               <View>
-                <Text style={styles.menuItemTitle}>Offline Sync Status</Text>
-                <Text style={styles.menuItemSubtitle}>All records saved locally and backed up</Text>
+                <Text style={[styles.menuItemTitle, { color: colors.textPrimary }]}>
+                  Offline Sync Status
+                </Text>
+                <Text style={[styles.menuItemSubtitle, { color: colors.textMuted }]}>
+                  All records saved locally and backed up
+                </Text>
               </View>
             </View>
-            <ChevronRight size={18} color={COLORS.textMuted} />
+            <ChevronRight size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
         {/* Security & Support */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>Security & System</Text>
+          <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>
+            SECURITY & SYSTEM
+          </Text>
 
-          <View style={styles.menuItemStatic}>
+          <View
+            style={[
+              styles.menuItemStatic,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+          >
             <View style={styles.menuItemLeft}>
-              <Shield size={20} color={COLORS.textSecondary} />
+              <Shield size={20} color={colors.textSecondary} />
               <View>
-                <Text style={styles.menuItemTitle}>Data Privacy & RLS</Text>
-                <Text style={styles.menuItemSubtitle}>Multi-tenant Row-Level Security active</Text>
+                <Text style={[styles.menuItemTitle, { color: colors.textPrimary }]}>
+                  Data Privacy & RLS
+                </Text>
+                <Text style={[styles.menuItemSubtitle, { color: colors.textMuted }]}>
+                  Multi-tenant Row-Level Security active
+                </Text>
               </View>
             </View>
           </View>
 
-          <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={[
+              styles.menuItem,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+            activeOpacity={0.7}
+          >
             <View style={styles.menuItemLeft}>
-              <HelpCircle size={20} color={COLORS.textSecondary} />
+              <HelpCircle size={20} color={colors.textSecondary} />
               <View>
-                <Text style={styles.menuItemTitle}>Help & Support</Text>
-                <Text style={styles.menuItemSubtitle}>How to use Libreta in your market stall</Text>
+                <Text style={[styles.menuItemTitle, { color: colors.textPrimary }]}>
+                  Help & Support
+                </Text>
+                <Text style={[styles.menuItemSubtitle, { color: colors.textMuted }]}>
+                  How to use Libreta in your market stall
+                </Text>
               </View>
             </View>
-            <ChevronRight size={18} color={COLORS.textMuted} />
+            <ChevronRight size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
         {/* Logout Button */}
         <TouchableOpacity
-          style={styles.logoutBtn}
+          style={[
+            styles.logoutBtn,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.debtBorder,
+            },
+          ]}
           activeOpacity={0.8}
           onPress={handleLogout}
         >
-          <LogOut size={20} color={COLORS.statusUnpaid} />
-          <Text style={styles.logoutText}>Log Out of Libreta</Text>
+          <LogOut size={18} color={colors.statusUnpaid} />
+          <Text style={[styles.logoutText, { color: colors.statusUnpaid }]}>
+            Log Out of Libreta
+          </Text>
         </TouchableOpacity>
-
-        <Text style={styles.versionText}>Libreta v1.0.0 (MVP Build) • Designed for Nigeria 🇳🇬</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -169,94 +358,117 @@ export default function MoreScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 100,
+    paddingBottom: 40,
   },
   header: {
-    marginBottom: 16,
+    marginBottom: 18,
   },
   title: {
-    ...TYPOGRAPHY.titleMedium,
+    fontFamily: FONTS.bold,
     fontSize: 24,
   },
   subtitle: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
+    fontFamily: FONTS.medium,
+    fontSize: 13,
     marginTop: 2,
   },
   profileCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1,
     marginBottom: 20,
+    gap: 14,
   },
   profileIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: COLORS.surfaceSubtle,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
   },
   profileInfo: {
     flex: 1,
   },
   businessName: {
-    ...TYPOGRAPHY.titleSmall,
-    color: COLORS.textPrimary,
+    fontFamily: FONTS.bold,
+    fontSize: 16,
   },
   ownerName: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
+    fontFamily: FONTS.medium,
+    fontSize: 12,
     marginTop: 2,
   },
   phoneText: {
-    ...TYPOGRAPHY.caption,
-    fontSize: 11,
-    color: COLORS.textMuted,
+    fontFamily: FONTS.regular,
+    fontSize: 12,
     marginTop: 1,
   },
   section: {
     marginBottom: 20,
   },
   sectionHeader: {
-    ...TYPOGRAPHY.caption,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-    textTransform: 'uppercase',
+    fontFamily: FONTS.bold,
+    fontSize: 11,
+    letterSpacing: 0.6,
     marginBottom: 8,
   },
-  modeCard: {
-    backgroundColor: '#F0FDF4',
+  themeSelectorCard: {
+    flexDirection: 'row',
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 6,
+    gap: 6,
+  },
+  themeOptionBtn: {
+    flex: 1,
+    height: 42,
     borderRadius: 12,
-    padding: 14,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  themeOptionBtnActive: {
+    borderWidth: 1,
+  },
+  themeOptionText: {
+    fontSize: 13,
+  },
+  modeCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  modeTextCol: {
+    flex: 1,
   },
   menuItem: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
     marginBottom: 8,
   },
   menuItemStatic: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
     marginBottom: 8,
   },
   menuItemLeft: {
@@ -264,15 +476,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     flex: 1,
-    paddingRight: 10,
   },
   menuItemTitle: {
-    ...TYPOGRAPHY.bodyBold,
-    fontSize: 15,
+    fontFamily: FONTS.bold,
+    fontSize: 14,
   },
   menuItemSubtitle: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
+    fontFamily: FONTS.medium,
     fontSize: 12,
     marginTop: 2,
   },
@@ -281,19 +491,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#FEF2F2',
-    paddingVertical: 14,
-    borderRadius: 12,
+    height: 50,
+    borderRadius: 14,
+    borderWidth: 1,
     marginTop: 10,
   },
   logoutText: {
-    ...TYPOGRAPHY.bodyBold,
-    color: COLORS.statusUnpaid,
-  },
-  versionText: {
-    ...TYPOGRAPHY.caption,
-    textAlign: 'center',
-    color: COLORS.textMuted,
-    marginTop: 20,
+    fontFamily: FONTS.bold,
+    fontSize: 14,
   },
 });
